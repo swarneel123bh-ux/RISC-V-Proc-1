@@ -1,0 +1,57 @@
+$date
+	Thu Apr 30 19:35:33 2026
+$end
+$version
+	Icarus Verilog
+$end
+$timescale
+	1s
+$end
+$scope module addr_decode_tb $end
+$var wire 32 ! rdata [31:0] $end
+$var wire 1 " cs_uart $end
+$var wire 1 # cs_ram $end
+$var reg 32 $ addr [31:0] $end
+$var reg 32 % ram_rdata [31:0] $end
+$var reg 32 & uart_rdata [31:0] $end
+$scope module uut $end
+$var wire 32 ' addr [31:0] $end
+$var wire 32 ( ram_rdata [31:0] $end
+$var wire 32 ) uart_rdata [31:0] $end
+$var wire 1 " cs_uart $end
+$var wire 1 # cs_ram $end
+$var reg 32 * rdata [31:0] $end
+$upscope $end
+$upscope $end
+$enddefinitions $end
+$comment Show the parameter values. $end
+$dumpall
+$end
+#0
+$dumpvars
+b11111110111011011011111011101111 *
+b1000100010001 )
+b11111110111011011011111011101111 (
+b10000 '
+b1000100010001 &
+b11111110111011011011111011101111 %
+b10000 $
+1#
+0"
+b11111110111011011011111011101111 !
+$end
+#10
+b11011110101011011011111011101111 !
+b11011110101011011011111011101111 *
+0#
+b10111110111011011011111011101011 %
+b10111110111011011011111011101011 (
+b11110000000000000000 $
+b11110000000000000000 '
+#20
+b1000100010001 !
+b1000100010001 *
+1"
+b11111111111111110000000000000100 $
+b11111111111111110000000000000100 '
+#30

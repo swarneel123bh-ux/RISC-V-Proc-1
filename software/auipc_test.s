@@ -1,0 +1,7 @@
+.section .text
+.globl _start
+_start:
+  auipc x1, 0x0        # @0x0  -> 0x00000000
+  auipc x2, 0x1        # @0x4  -> 0x00001004
+  auipc x3, 0x12345    # @0x8  -> 0x12345008
+  auipc x4, 0xfffff    # @0xc  -> 0xfffff00c

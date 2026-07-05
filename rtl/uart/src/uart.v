@@ -17,27 +17,36 @@ module uart (
 
   reg [31:0] rx_buf;
 
-  /* poll stdin every clock for incoming bytes */
+  /* RX state — single owner of rx_buf and rx_ready.
+     - rx_ready asserts when a byte is latched, and HOLDS until the CPU
+       reads UART_RX (which clears it).
+     - The stdin poll is skipped while an unread byte is held, so a pending
+       byte is never overwritten; surplus input simply waits in the OS
+       buffer. On an UART_RX read we clear and immediately poll for the next
+       byte, so no cycle is wasted.
+     - If a read and a new byte land on the same cycle, the new byte wins
+       (its assignment comes last), so nothing is dropped. */
   always @(posedge clk or posedge rst) begin
     if (rst) begin
       rx_buf   <= 32'h0;
       rx_ready <= 1'b0;
-    end else begin
-      /* always poll — independent of cs */
-      begin : rx_poll
-        reg [31:0] rx_val;
+    end else begin : rx_blk
+      reg        do_read;
+      reg [31:0] rx_val;
+      do_read = cs && re && (addr == UART_RX);
+      if (do_read)
+        rx_ready <= 1'b0;
+      if (do_read || !rx_ready) begin
         rx_val = $uart_rx_read();
         if (rx_val != 32'hFFFFFFFF) begin
           rx_buf   <= rx_val;
           rx_ready <= 1'b1;
-        end else begin
-          rx_ready <= 1'b0;
         end
       end
     end
   end
 
-  /* TX and register reads */
+  /* TX and register reads — owns rdata only */
   always @(posedge clk or posedge rst) begin
     if (rst) begin
       rdata <= 32'h0;
@@ -50,10 +59,7 @@ module uart (
       end
       if (re) begin
         case (addr)
-          UART_RX: begin
-            rdata    <= rx_buf;
-            rx_ready <= 1'b0;  /* clear after read */
-          end
+          UART_RX:     rdata <= rx_buf;
           UART_STATUS: rdata <= {30'b0, rx_ready, 1'b1};  /* bit1=rx_ready, bit0=tx_ready */
           default: begin
             $display("[UART] WARNING: read from unknown addr 0x%08X", addr);

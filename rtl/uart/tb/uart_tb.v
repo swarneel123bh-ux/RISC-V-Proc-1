@@ -80,7 +80,7 @@ module uart_tb();
   endtask
 
   initial begin
-    $dumpfile("build/uart_tb.vcd");
+    $dumpfile("build/vcd/uart_tb.vcd");
     $dumpvars(0, uart_tb);
     $uart_init();
 

@@ -1,46 +1,34 @@
 # ============================================================================
-# proc.mk  --  unit build/sim for the `proc` module
-# Invoked from the repo root as:  make rtl-proc / rtl-proc-test / rtl-proc-run
-# Run directly with:              make -C rtl/proc -f proc.mk test
-# Recipe lines use TABS (make requirement); everything else is 2-space.
+# regfile.mk  --  unit build/sim for the `regfile` module
+# From repo root:  make rtl-regfile / rtl-regfile-test / rtl-regfile-run
+# Direct:          make -C rtl/regfile -f regfile.mk test
+# Recipe lines use TABS; everything else 2-space.
 # ============================================================================
-
 IVERILOG := iverilog
 VVP      := vvp
 SURFER   := surfer
 FLAGS    := -g2012 -Wall
-
 SRC_DIR := src
 TB_DIR  := tb
 BUILD   := build
 VVP_DIR := $(BUILD)/vvp
 VCD_DIR := $(BUILD)/vcd
-
-MODULE  := proc
+MODULE  := regfile
 TB      := $(MODULE)_tb
-
-# Own RTL + any cross-module RTL this module instantiates (none here).
 SOURCES := $(SRC_DIR)/$(MODULE).v
-DEPS := $(wildcard ../add4/src/*.v ../mux2x1_32/src/*.v ../program_counter/src/*.v)
+DEPS    :=
 TBENCH  := $(TB_DIR)/$(TB).v
-
 OUT  := $(VVP_DIR)/$(TB).vvp
 WAVE := $(VCD_DIR)/$(TB).vcd
-
 .PHONY: all test run clean
 all: $(OUT)
-
 $(OUT): $(SOURCES) $(DEPS) $(TBENCH)
 	@mkdir -p $(VVP_DIR) $(VCD_DIR)
 	$(IVERILOG) $(FLAGS) -o $@ $(SOURCES) $(DEPS) $(TBENCH)
-
 test: all
-	@mkdir -p $(VCD_DIR)
+	$(VVP) $(OUT) +dump
+run: all
 	$(VVP) $(OUT) +dump
 	$(SURFER) $(WAVE) >/dev/null 2>&1
-
-run: all
-	$(VVP) $(OUT)
-
 clean:
 	rm -rf $(BUILD)

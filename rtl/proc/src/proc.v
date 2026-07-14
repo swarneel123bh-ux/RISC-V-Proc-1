@@ -30,9 +30,12 @@ module proc(
   );
 
   // Instruction memory
-  integer i;
-  reg [31:0] imem [0:1023];		// Instruction memory
-  initial $readmemh("../../software/rom/program.hex", imem);
+  wire [31:0] instructionMemInstr;
+  instruction_mem #(.SYNC(0)) instructionMem(
+  	.clk(clk),
+   	.addr(pcOut),
+    .instr(instructionMemInstr)
+  );
 
   // Reset
   always @(negedge rstb) begin

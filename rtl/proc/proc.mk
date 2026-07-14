@@ -21,7 +21,7 @@ TB      := $(MODULE)_tb
 
 # Own RTL + any cross-module RTL this module instantiates (none here).
 SOURCES := $(SRC_DIR)/$(MODULE).v
-DEPS := $(wildcard ../add4/src/*.v ../mux2x1_32/src/*.v ../program_counter/src/*.v)
+DEPS := $(wildcard ../add4/src/*.v ../mux2x1_32/src/*.v ../program_counter/src/*.v ../instruction_mem/src/*.v)
 TBENCH  := $(TB_DIR)/$(TB).v
 
 OUT  := $(VVP_DIR)/$(TB).vvp
@@ -31,9 +31,9 @@ WAVE := $(VCD_DIR)/$(TB).vcd
 all: $(OUT)
 
 $(OUT): $(SOURCES) $(DEPS) $(TBENCH)
-	python3 ../../software/imem_depth.py ../../software/rom/program.hex --pow2 --out src/imem_params.vh
+	python3 ../../software/imem_depth.py ../../software/rom/program.hex --pow2 --out ../instruction_mem/src/imem_params.vh
 	@mkdir -p $(VVP_DIR) $(VCD_DIR)
-	$(IVERILOG) ...
+	$(IVERILOG) $(FLAGS) -I../instruction_mem/src -o $@ $(SOURCES) $(DEPS) $(TBENCH)
 
 test: all
 	@mkdir -p $(VCD_DIR)

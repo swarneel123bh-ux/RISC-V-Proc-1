@@ -21,7 +21,13 @@ TB      := $(MODULE)_tb
 
 # Own RTL + any cross-module RTL this module instantiates (none here).
 SOURCES := $(SRC_DIR)/$(MODULE).v
-DEPS := $(wildcard ../add4/src/*.v ../mux2x1_32/src/*.v ../program_counter/src/*.v ../instruction_mem/src/*.v ../regfile/src/*.v)
+DEPS := $(wildcard \
+	../add4/src/*.v \
+	../mux2x1_32/src/*.v \
+	../program_counter/src/*.v \
+	../instruction_mem/src/*.v \
+	../regfile/src/*.v \
+	../immdataext/src/immdataext.v)
 TBENCH  := $(TB_DIR)/$(TB).v
 
 OUT  := $(VVP_DIR)/$(TB).vvp

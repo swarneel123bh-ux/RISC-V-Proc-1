@@ -72,6 +72,14 @@ module proc(
     .wdata(32'h0)	// Hardwiring to 0 now, need to change later
   );
 
+  // ID/EX PIPELINE REGISTER
+  wire [31:0] idex_rdata1 = registerfilerdata1;
+  wire [31:0] idex_rdata2 = registerfilerdata2;
+  wire [31:0]	idex_immdata;
+  immdataext immdataextractor(
+  	.ifid_instr(ifid_instr),
+   	.immdata(idex_immdata)
+  );
   // reset
   always @(posedge clk or negedge rstb) begin
   	if (!rstb) begin

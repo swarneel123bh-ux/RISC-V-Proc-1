@@ -27,7 +27,8 @@ DEPS := $(wildcard \
 	../program_counter/src/*.v \
 	../instruction_mem/src/*.v \
 	../regfile/src/*.v \
-	../immdataext/src/immdataext.v)
+	../immdataext/src/immdataext.v \
+	../cu/src/cu.v)
 TBENCH  := $(TB_DIR)/$(TB).v
 
 OUT  := $(VVP_DIR)/$(TB).vvp

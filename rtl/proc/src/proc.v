@@ -12,10 +12,12 @@ module proc(
   wire [31:0] pcin;
   wire [31:0] pcout;
   wire [31:0] pcadd4out;
+  wire [31:0] pcBranchTarget;
+  wire pcInMuxSel;
   mux2x1_32 pcinmux(
   	.in1(pcadd4out),
-   	.in2(pcadd4out), 				// need to change to id/ex register
-    .sel(1'b0), 						// need to change to cu signal
+   	.in2(pcBranchTarget), 				// need to change to id/ex register
+    .sel(pcInMuxSel), 						// need to change to cu signal
     .out(pcin)
   );
 
@@ -40,6 +42,7 @@ module proc(
 
   // if/id pipeline register
   reg [31:0] ifid_pc;
+  reg [31:0] ifid_pcPlus4;
   reg [31:0] ifid_instr;
 
   // instruction decode stage stuff
@@ -108,6 +111,7 @@ module proc(
 
   // ID/EX PIPELINE REGISTER
   reg [31:0] idex_pc;
+  reg [31:0] idex_pcPlus4;
   reg [31:0] idex_rdata1;
   reg [31:0] idex_rdata2;
   reg [31:0] idex_immdata;
@@ -153,8 +157,20 @@ module proc(
   	.alu_out(aluout),
   	.alu_zero(aluzero)
   );
+  wire branchUnit_take;
+  branch_unit branchUnit(
+ 		.funct3(idex_funct3),
+  	.rdata1(idex_rdata1),
+  	.rdata2(idex_rdata2),
+  	.take(branchUnit_take)
+  );
+  wire [31:0] branchDestination = (idex_pc + idex_immdata);							// Branches and JAL
+  wire [31:0] jalrDestination = (idex_rdata1 + idex_immdata) & ~32'b1;	// Only for JALR (last bit needs reset)
+  assign pcInMuxSel = (idex_cu_branch & branchUnit_take) | idex_cu_jump | idex_cu_jalr;
+  assign pcBranchTarget = idex_cu_jalr ? jalrDestination : branchDestination;
 
   // EX/MEM Pipeline register
+  reg [31:0] exmem_pcPlus4;
  	reg exmem_cu_reg_write;
  	reg exmem_cu_mem_read;
  	reg exmem_cu_mem_write;
@@ -180,6 +196,7 @@ module proc(
   );
 
   // MEM/WB Pipeline Register
+  reg [31:0] memwb_pcPlus4;
   reg [1:0] memwb_cu_wb_sel;
   reg [31:0] memwb_alu_out;
   reg [31:0] memwb_dataMem_rdata;
@@ -190,7 +207,7 @@ module proc(
  		case (memwb_cu_wb_sel)
    		2'b00: wb_mux = memwb_alu_out;				// ALU Result
      	2'b01: wb_mux = memwb_dataMem_rdata;	// Data Memory Read Result
-      2'b10: wb_mux = memwb_dataMem_rdata;	// PC+4 for JAL/JALR
+      2'b10: wb_mux = memwb_pcPlus4;				// PC+4 for JAL/JALR
   	endcase
   end
 
@@ -199,10 +216,13 @@ module proc(
   always @(posedge clk or negedge rstb) begin
   	if (!rstb) begin
    		clk <= 0;
+
      	ifid_instr 	<= 0;
      	ifid_pc 		<= 0;
+     	ifid_pcPlus4 <= 0;
 
       idex_pc <= 0;
+      idex_pcPlus4 <= 0;
       idex_rdata1 <= 0;
       idex_rdata2 <= 0;
       idex_immdata <= 0;
@@ -211,7 +231,6 @@ module proc(
       idex_rd <= 0;
       idex_funct3 <= 0;
       idex_funct7 <= 0;
-
      	idex_cu_reg_write <= 0;
      	idex_cu_alu_src_a <= 0;
      	idex_cu_alu_src_b <= 0;
@@ -223,6 +242,7 @@ module proc(
      	idex_cu_jump <= 0;
      	idex_cu_jalr <= 0;
 
+      exmem_pcPlus4 <= 0;
       exmem_cu_reg_write <= 0;
       exmem_cu_mem_read <= 0;
       exmem_cu_mem_write <= 0;
@@ -234,6 +254,7 @@ module proc(
       exmem_rd <= 0;
       exmem_rdata2 <= 0;
 
+      memwb_pcPlus4 <= 0;
       memwb_cu_reg_write <= 0;
       memwb_cu_wb_sel <= 0;
       memwb_alu_out <= 0;
@@ -241,30 +262,59 @@ module proc(
       memwb_rd <= 0;
 
    	end else begin
-    	ifid_pc <= pcout;
-     	ifid_instr <= instructionmeminstr;
+    	if (pcInMuxSel) begin	// PC will change to 1 now, need to flush last pipeline (two nops => need to flush IF and ID)
+    		ifid_pc 			<= 0;
+     		ifid_pcPlus4 	<= 0;
+     		ifid_instr 		<= 32'h00000013;	// Decodes to NOP, better than just 0;
 
-      idex_pc <= ifid_pc;
-      idex_rdata1 <= registerfilerdata1;
-      idex_rdata2 <= registerfilerdata2;
-      idex_immdata <= id_immdata;
-      idex_rs1 <= id_rs1;
-      idex_rs2 <= id_rs2;
-      idex_rd <= id_rd;
-      idex_funct3 <= id_funct3;
-      idex_funct7 <= id_funct7;
+       	idex_pc 					<= 0;
+       	idex_pcPlus4 			<= 0;
+       	idex_rdata1 			<= 0;
+       	idex_rdata2 			<= 0;
+       	idex_immdata 			<= 0;
+       	idex_rs1 					<= 0;
+       	idex_rs2 					<= 0;
+       	idex_rd 					<= 0;
+       	idex_funct3 			<= 0;
+       	idex_funct7 			<= 0;
+      	idex_cu_reg_write <= 0;
+      	idex_cu_alu_src_a <= 0;
+      	idex_cu_alu_src_b <= 0;
+      	idex_cu_alu_op 		<= 0;
+      	idex_cu_mem_read 	<= 0;
+      	idex_cu_mem_write <= 0;
+      	idex_cu_wb_sel 		<= 0;
+      	idex_cu_branch 		<= 0;
+      	idex_cu_jump 			<= 0;
+      	idex_cu_jalr 			<= 0;
+    	end else begin
+    		ifid_pc <= pcout;
+     		ifid_pcPlus4 <= pcadd4out;
+     		ifid_instr <= instructionmeminstr;
 
-     	idex_cu_reg_write <= cu_reg_write;
-     	idex_cu_alu_src_a <= cu_alu_src_a;
-     	idex_cu_alu_src_b <= cu_alu_src_b;
-     	idex_cu_alu_op <= cu_alu_op;
-     	idex_cu_mem_read <= cu_mem_read;
-     	idex_cu_mem_write <= cu_mem_write;
-     	idex_cu_wb_sel <= cu_wb_sel;
-     	idex_cu_branch <= cu_branch;
-     	idex_cu_jump <= cu_jump;
-     	idex_cu_jalr <= cu_jalr;
+      	idex_pc <= ifid_pc;
+       	idex_pcPlus4 <= ifid_pcPlus4;
+       	idex_rdata1 <= registerfilerdata1;
+       	idex_rdata2 <= registerfilerdata2;
+       	idex_immdata <= id_immdata;
+       	idex_rs1 <= id_rs1;
+       	idex_rs2 <= id_rs2;
+       	idex_rd <= id_rd;
+       	idex_funct3 <= id_funct3;
+       	idex_funct7 <= id_funct7;
+      	idex_cu_reg_write <= cu_reg_write;
+      	idex_cu_alu_src_a <= cu_alu_src_a;
+      	idex_cu_alu_src_b <= cu_alu_src_b;
+      	idex_cu_alu_op <= cu_alu_op;
+      	idex_cu_mem_read <= cu_mem_read;
+      	idex_cu_mem_write <= cu_mem_write;
+      	idex_cu_wb_sel <= cu_wb_sel;
+      	idex_cu_branch <= cu_branch;
+      	idex_cu_jump <= cu_jump;
+      	idex_cu_jalr <= cu_jalr;
+     	end
 
+      exmem_pcPlus4 <= idex_pcPlus4;
       exmem_cu_reg_write <= idex_cu_reg_write;
       exmem_cu_mem_read <= idex_cu_mem_read;
       exmem_cu_mem_write <= idex_cu_mem_write;
@@ -276,6 +326,7 @@ module proc(
       exmem_rd <= idex_rd;
       exmem_rdata2 <= idex_rdata2;
 
+      memwb_pcPlus4 <= exmem_pcPlus4;
       memwb_cu_reg_write <= exmem_cu_reg_write;
       memwb_cu_wb_sel <= exmem_cu_wb_sel;
       memwb_alu_out <= exmem_alu_out;

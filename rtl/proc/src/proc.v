@@ -68,6 +68,7 @@ module proc(
 
   reg [31:0] wb_mux;			// Writing here since we need the loopback
   reg memwb_cu_reg_write;	// Same
+  reg [4:0] memwb_rd;			// Same
   regfile registerfile(
   	.clk(clk),
    	.rstb(rstb),
@@ -76,7 +77,7 @@ module proc(
     .raddr2(id_rs2),
     .rdata1(registerfilerdata1),
     .rdata2(registerfilerdata2),
-    .waddr(id_rd),
+    .waddr(memwb_rd),
     .wdata(wb_mux)	// Hardwiring to 0 now, need to change later
   );
 
@@ -182,7 +183,6 @@ module proc(
   reg [1:0] memwb_cu_wb_sel;
   reg [31:0] memwb_alu_out;
   reg [31:0] memwb_dataMem_rdata;
-  reg [4:0] memwb_rd;
 
   // WB Stage Stuff
   always @(*) begin

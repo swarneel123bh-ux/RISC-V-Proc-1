@@ -65,16 +65,19 @@ module proc(
   // immediate + control decode also live here (combinational)
   wire [31:0] registerfilerdata1;
   wire [31:0] registerfilerdata2;
+
+  reg [31:0] wb_mux;			// Writing here since we need the loopback
+  reg memwb_cu_reg_write;	// Same
   regfile registerfile(
   	.clk(clk),
    	.rstb(rstb),
-    .wen(1'b0),	// hardwiring to 0 for now, meaning no writes will happen, but this signal needs to be controlled
+    .wen(memwb_cu_reg_write),	// hardwiring to 0 for now, meaning no writes will happen, but this signal needs to be controlled
     .raddr1(id_rs1),
     .raddr2(id_rs2),
     .rdata1(registerfilerdata1),
     .rdata2(registerfilerdata2),
     .waddr(id_rd),
-    .wdata(32'h0)	// Hardwiring to 0 now, need to change later
+    .wdata(wb_mux)	// Hardwiring to 0 now, need to change later
   );
 
   // Control Unit stuff
@@ -162,6 +165,35 @@ module proc(
   reg [4:0] exmem_rd;
   reg [31:0] exmem_rdata2;
 
+  // MEM Stage Stuff
+  wire [31:0] dataMem_rdata;
+  wire [3:0] dataMem_wstrb = exmem_cu_mem_write ? 4'b1111 : 4'b0000;
+  data_mem dataMem(
+  	.clk(clk),
+  	.rstb(rstb),
+  	.addr(exmem_alu_out),        	// byte address
+  	.wdata(exmem_rdata2),       	// write data (right-justified)
+  	.wstrb(dataMem_wstrb),       	// byte-write enables: bit i set means wdata word's byte i written
+  	.mem_read(exmem_cu_mem_read), // read enable
+  	.rdata(dataMem_rdata)        	// raw 32-bit word at addr (aligned)
+  );
+
+  // MEM/WB Pipeline Register
+  reg [1:0] memwb_cu_wb_sel;
+  reg [31:0] memwb_alu_out;
+  reg [31:0] memwb_dataMem_rdata;
+  reg [4:0] memwb_rd;
+
+  // WB Stage Stuff
+  always @(*) begin
+  	wb_mux = memwb_alu_out;
+ 		case (memwb_cu_wb_sel)
+   		2'b00: wb_mux = memwb_alu_out;				// ALU Result
+     	2'b01: wb_mux = memwb_dataMem_rdata;	// Data Memory Read Result
+      2'b10: wb_mux = memwb_dataMem_rdata;	// PC+4 for JAL/JALR
+  	endcase
+  end
+
 
   // reset
   always @(posedge clk or negedge rstb) begin
@@ -191,6 +223,23 @@ module proc(
      	idex_cu_jump <= 0;
      	idex_cu_jalr <= 0;
 
+      exmem_cu_reg_write <= 0;
+      exmem_cu_mem_read <= 0;
+      exmem_cu_mem_write <= 0;
+      exmem_cu_wb_sel <= 0;
+      exmem_cu_branch <= 0;
+      exmem_cu_jump <= 0;
+      exmem_cu_jalr <= 0;
+      exmem_alu_out <= 0;
+      exmem_rd <= 0;
+      exmem_rdata2 <= 0;
+
+      memwb_cu_reg_write <= 0;
+      memwb_cu_wb_sel <= 0;
+      memwb_alu_out <= 0;
+      memwb_dataMem_rdata <= 0;
+      memwb_rd <= 0;
+
    	end else begin
     	ifid_pc <= pcout;
      	ifid_instr <= instructionmeminstr;
@@ -215,6 +264,23 @@ module proc(
      	idex_cu_branch <= cu_branch;
      	idex_cu_jump <= cu_jump;
      	idex_cu_jalr <= cu_jalr;
+
+      exmem_cu_reg_write <= idex_cu_reg_write;
+      exmem_cu_mem_read <= idex_cu_mem_read;
+      exmem_cu_mem_write <= idex_cu_mem_write;
+      exmem_cu_wb_sel <= idex_cu_wb_sel;
+      exmem_cu_branch <= idex_cu_branch;
+      exmem_cu_jump <= idex_cu_jump;
+      exmem_cu_jalr <= idex_cu_jalr;
+      exmem_alu_out <= aluout;
+      exmem_rd <= idex_rd;
+      exmem_rdata2 <= idex_rdata2;
+
+      memwb_cu_reg_write <= exmem_cu_reg_write;
+      memwb_cu_wb_sel <= exmem_cu_wb_sel;
+      memwb_alu_out <= exmem_alu_out;
+      memwb_dataMem_rdata <= dataMem_rdata;
+      memwb_rd <= exmem_rd;
     end
   end
 

@@ -30,7 +30,8 @@ DEPS := $(wildcard \
 	../immdataext/src/immdataext.v \
 	../cu/src/cu.v \
 	../alu/src/alu.v \
-	../alu_control/src/alu_control.v)
+	../alu_control/src/alu_control.v \
+	../data_mem/src/data_mem.v)
 TBENCH  := $(TB_DIR)/$(TB).v
 
 OUT  := $(VVP_DIR)/$(TB).vvp

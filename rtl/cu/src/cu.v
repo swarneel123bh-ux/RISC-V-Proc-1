@@ -71,6 +71,7 @@ module cu (
         wb_sel = WB_ALU;
       end
 
+      // Unused since branch unit should take care of jumps
       OP_JAL: begin
       	reg_write = 1;
        	alu_src_a = A_PC;
@@ -80,6 +81,8 @@ module cu (
         jump = 1;
       end
 
+      // Unused since pc+4 is passed from the pipeline register to the
+      // wb mux
       OP_JALR: begin
       	reg_write = 1;
        	alu_src_a = A_RS1;

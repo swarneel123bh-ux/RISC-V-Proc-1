@@ -33,9 +33,16 @@ after_bne:
     # ---- JALR: load a target addr into x12, jump through it ----
     la    x12, jalr_target   # x12 = &jalr_target  (pseudo-op; see note)
     jalr  x13, 0(x12)        # jump to x12, link x13
-    nop
-    nop
     addi  x15, x0, 0x7AD     # POISON: skipped -> x15 stays 0
 
 jalr_target:
-    addi  x14, x0, 0x22      # x14=0x22 proves JALR landed
+    addi  x14, x0, 0xBE      # x14=0x22 proves JALR landed
+
+hang_:
+		la x25, hang
+hang:
+		jalr x26, 0(x25)
+		addi x20, x0, 0x7AD					# POISON
+
+noexec:
+		la x27, 0xAB

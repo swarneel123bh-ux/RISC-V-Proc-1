@@ -16,18 +16,16 @@ module proc(
   wire pcInMuxSel;
   mux2x1_32 pcinmux(
   	.in1(pcadd4out),
-   	.in2(pcBranchTarget), 				// need to change to id/ex register
-    .sel(pcInMuxSel), 						// need to change to cu signal
+   	.in2(pcBranchTarget),
+    .sel(pcInMuxSel),
     .out(pcin)
   );
-
   program_counter pc(
   	.rstb(rstb),
    	.clk(clk),
    	.in(pcin),
    	.out(pcout)
   );
-
   add4 pcadd4(
   .in(pcout),
   .out(pcadd4out)
@@ -75,13 +73,13 @@ module proc(
   regfile registerfile(
   	.clk(clk),
    	.rstb(rstb),
-    .wen(memwb_cu_reg_write),	// hardwiring to 0 for now, meaning no writes will happen, but this signal needs to be controlled
+    .wen(memwb_cu_reg_write),
     .raddr1(id_rs1),
     .raddr2(id_rs2),
     .rdata1(registerfilerdata1),
     .rdata2(registerfilerdata2),
     .waddr(memwb_rd),
-    .wdata(wb_mux)	// Hardwiring to 0 now, need to change later
+    .wdata(wb_mux)
   );
 
   // Control Unit stuff
@@ -200,6 +198,8 @@ module proc(
   reg [1:0] memwb_cu_wb_sel;
   reg [31:0] memwb_alu_out;
   reg [31:0] memwb_dataMem_rdata;
+  // reg [4:0] memwb_rd;
+  // reg memwb_cu_reg_write;
 
   // WB Stage Stuff
   always @(*) begin

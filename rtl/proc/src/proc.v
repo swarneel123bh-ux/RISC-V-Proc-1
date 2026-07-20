@@ -123,6 +123,46 @@ module proc(
  	reg idex_cu_jump;
  	reg idex_cu_jalr;
 
+  // EX Stage stuff
+  wire [3:0] aluctrl_out;
+  alu_control aluctrl(
+  	.aluOp(idex_cu_alu_op),
+  	.funct3(idex_funct3),
+  	.funct7(idex_funct7),
+  	.alu_control_out(aluctrl_out)
+  );
+  reg [31:0] alusrca;	// MUX to determine alu_src_a;
+  always @(*) begin
+  	alusrca = 32'h0;
+ 		case (idex_cu_alu_src_a)
+   		2'b00: alusrca = idex_rdata1;
+     	2'b01: alusrca = idex_pc;
+      2'b10: alusrca = 32'h0;
+   	endcase
+  end
+  wire [31:0] aluout;
+  wire aluzero;
+  alu alu_(
+  	.aluop_ctrl(aluctrl_out),
+  	.alu_a(alusrca),
+  	.alu_b((idex_cu_alu_src_b) ? idex_immdata : idex_rdata2),
+  	.alu_out(aluout),
+  	.alu_zero(aluzero)
+  );
+
+  // EX/MEM Pipeline register
+ 	reg exmem_cu_reg_write;
+ 	reg exmem_cu_mem_read;
+ 	reg exmem_cu_mem_write;
+ 	reg [1:0] exmem_cu_wb_sel;
+ 	reg exmem_cu_branch;
+ 	reg exmem_cu_jump;
+ 	reg exmem_cu_jalr;
+  reg [31:0] exmem_alu_out;
+  reg [4:0] exmem_rd;
+  reg [31:0] exmem_rdata2;
+
+
   // reset
   always @(posedge clk or negedge rstb) begin
   	if (!rstb) begin

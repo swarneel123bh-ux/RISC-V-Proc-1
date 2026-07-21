@@ -33,7 +33,8 @@ DEPS := $(wildcard \
 	../alu_control/src/alu_control.v \
 	../data_mem/src/data_mem.v \
 	../branch_unit/src/branch_unit.v \
-	../forwarding_unit/src/forwarding_unit.v)
+	../forwarding_unit/src/forwarding_unit.v \
+	../hazard_detection_unit/src/hazard_detection_unit.v)
 TBENCH  := $(TB_DIR)/$(TB).v
 
 OUT  := $(VVP_DIR)/$(TB).vvp

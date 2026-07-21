@@ -9,17 +9,19 @@ module proc(
   always begin #5; clk = ~clk; end
 
   // IF Stage Stuff
-  wire [31:0] pcin;
+  wire [31:0] pcin_, pcin;
   wire [31:0] pcout;
   wire [31:0] pcadd4out;
   wire [31:0] pcBranchTarget;
   wire pcInMuxSel;
+  wire hdu_stall;
   mux2x1_32 pcinmux(
   	.in1(pcadd4out),
    	.in2(pcBranchTarget),
     .sel(pcInMuxSel),
-    .out(pcin)
+    .out(pcin_)
   );
+  assign pcin = hdu_stall ? pcout : pcin_;
   program_counter pc(
   	.rstb(rstb),
    	.clk(clk),
@@ -240,6 +242,15 @@ module proc(
   	endcase
   end
 
+  // HAZARD DETECTION UNIT
+  hazard_detection_unit hazardDetectionUnit(
+	 	.id_rs1(id_rs1),        // sources of the instruction in ID
+  	.id_rs2(id_rs2),
+   	.idex_rd(idex_rd),       // dest of the instruction in EX
+   	.idex_mem_read(idex_cu_mem_read), // is that EX instruction a load?
+   	.stall(hdu_stall)
+  );
+
 
   // reset
   always @(posedge clk or negedge rstb) begin
@@ -316,7 +327,33 @@ module proc(
       	idex_cu_branch 		<= 0;
       	idex_cu_jump 			<= 0;
       	idex_cu_jalr 			<= 0;
-    	end else begin
+    	end else if (hdu_stall) begin
+     		// FREEZE IFID, BUBBLE IDEX
+     		ifid_pc 			<= ifid_pc;
+       	ifid_pcPlus4 	<= ifid_pcPlus4;
+      	ifid_instr 		<= ifid_instr;
+
+      	idex_pc 					<= 0;
+      	idex_pcPlus4 			<= 0;
+      	idex_rdata1 			<= 0;
+      	idex_rdata2 			<= 0;
+      	idex_immdata 			<= 0;
+      	idex_rs1 					<= 0;
+      	idex_rs2 					<= 0;
+      	idex_rd 					<= 0;
+      	idex_funct3 			<= 0;
+      	idex_funct7 			<= 0;
+     	idex_cu_reg_write <= 0;
+     	idex_cu_alu_src_a <= 0;
+     	idex_cu_alu_src_b <= 0;
+     	idex_cu_alu_op 		<= 0;
+     	idex_cu_mem_read 	<= 0;
+     	idex_cu_mem_write <= 0;
+     	idex_cu_wb_sel 		<= 0;
+     	idex_cu_branch 		<= 0;
+     	idex_cu_jump 			<= 0;
+     	idex_cu_jalr 			<= 0;
+     	end else begin
     		ifid_pc <= pcout;
      		ifid_pcPlus4 <= pcadd4out;
      		ifid_instr <= instructionmeminstr;

@@ -27,13 +27,37 @@ module data_mem #(
 		end
 	end
 
+	// MMIO decode
+	wire is_uart = (addr >= 32'hFFFF0000);
+	wire is_ram = ~is_uart;
+
+	// RAM Array
 	always @(posedge clk) begin
 		if (wstrb[0]) int_mem[widx][7:0] <= wdata[7:0];
 		if (wstrb[1]) int_mem[widx][15:8] <= wdata[15:8];
 		if (wstrb[2]) int_mem[widx][23:16] <= wdata[23:16];
 		if (wstrb[3]) int_mem[widx][31:24] <= wdata[31:24];
 	end
+	wire [31:0] ram_data = (mem_read & is_ram) ? int_mem[widx] : 32'h0;
 
-	assign rdata = (mem_read) ? int_mem[widx] : 32'h0;
+	// UART instance
+	wire uart_we = is_uart & (|wstrb);
+	wire uart_re = is_uart & mem_read;
+	wire [31:0] uart_rdata;
+	wire uart_rx_ready;		// Unused in the uart module but available to expose later
+	uart uartInst(
+ 		.clk(clk),
+  	.rst(~rstb),				// UART module was active high
+  	.addr(addr),
+  	.wdata(wdata),
+  	.we(uart_we),
+  	.re(uart_re),
+  	.cs(is_uart),
+  	.rdata(uart_rdata),
+  	.rx_ready(uart_rx_ready)
+	);
+
+	// Final output
+	assign rdata = is_uart ? uart_rdata : ram_data;
 
 endmodule

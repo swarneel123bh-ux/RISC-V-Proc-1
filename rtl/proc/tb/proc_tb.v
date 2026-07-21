@@ -11,6 +11,7 @@ module proc_tb();
       $dumpfile("build/vcd/proc_tb.vcd");
       $dumpvars(0, proc_tb);
     end
+    $uart_init();
     rstb = 0;
     #30;
     rstb = 1;

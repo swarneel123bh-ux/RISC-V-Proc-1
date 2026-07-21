@@ -16,6 +16,11 @@ BUILD   := build
 VVP_DIR := $(BUILD)/vvp
 VCD_DIR := $(BUILD)/vcd
 
+IVERILOG_VPI := iverilog-vpi
+VPI_SRC := ../uart/vpi/uart_vpi.c
+VPI_LIB := $(BUILD)/uart_vpi.vpi
+VPI_RUN := -M $(BUILD) -m uart_vpi
+
 MODULE  := proc
 TB      := $(MODULE)_tb
 
@@ -35,14 +40,19 @@ DEPS := $(wildcard \
 	../branch_unit/src/branch_unit.v \
 	../forwarding_unit/src/forwarding_unit.v \
 	../hazard_detection_unit/src/hazard_detection_unit.v \
-	../mem_wrapper/src/mem_wrapper.v)
+	../mem_wrapper/src/mem_wrapper.v \
+	../uart/src/uart.v)
 TBENCH  := $(TB_DIR)/$(TB).v
 
 OUT  := $(VVP_DIR)/$(TB).vvp
 WAVE := $(VCD_DIR)/$(TB).vcd
 
-.PHONY: all test run clean
-all: $(OUT)
+.PHONY: all test run clean console
+all: $(OUT) $(VPI_LIB)
+
+$(VPI_LIB): $(VPI_SRC)
+	@mkdir -p $(BUILD)
+	cd $(BUILD) && $(IVERILOG_VPI) ../$(VPI_SRC) --name=uart_vpi
 
 $(OUT): $(SOURCES) $(DEPS) $(TBENCH)
 	python3 ../../software/imem_depth.py ../../software/rom/program.hex --pow2 --out ../instruction_mem/src/imem_params.vh
@@ -51,11 +61,14 @@ $(OUT): $(SOURCES) $(DEPS) $(TBENCH)
 
 test: all
 	@mkdir -p $(VCD_DIR)
-	$(VVP) $(OUT) +dump
+	printf 'X' | $(VVP) $(VPI_RUN) $(OUT) +dump
 	$(SURFER) $(WAVE) >/dev/null 2>&1
 
 run: all
-	$(VVP) $(OUT)
+	$(VVP) $(VPI_RUN) $(OUT)
+
+console: all
+	$(VVP) $(VPI_RUN) $(OUT)
 
 clean:
 	rm -rf $(BUILD)

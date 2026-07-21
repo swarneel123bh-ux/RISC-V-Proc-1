@@ -1,10 +1,14 @@
 `timescale 1ns / 1ps
 
 `include "imem_params.vh"
+`ifndef IMEM_HEXFILE
+  `define IMEM_HEXFILE "../../software/rom/program.hex"
+`endif
+
 module instruction_mem #(
-	parameter DEPTH = `IMEM_DEPTH,				// Depth generated from the script software/imem_depth.py
+  parameter DEPTH = `IMEM_DEPTH,        // Depth generated from software/imem_depth.py
   parameter SYNC    = 1,                // 1 = synchronous readouts 0 = async (sim-only)
-  parameter HEXFILE = "../../software/rom/program.hex" // Must be the same for the sim to run
+  parameter HEXFILE = `IMEM_HEXFILE     // override with -DIMEM_HEXFILE='"..."' per run CWD
 ) (
   input  wire        clk,               // used only when SYNC=1
   input  wire [31:0] addr,
@@ -12,11 +16,8 @@ module instruction_mem #(
 );
   localparam AW = $clog2(DEPTH);
   reg [31:0] mem [0:DEPTH-1];
-
   initial $readmemh(HEXFILE, mem);
-
   wire [AW-1:0] widx = addr[AW+1:2];    // word index, drop byte offset
-
   generate
     if (SYNC) begin : g_sync
       reg [31:0] rdata;

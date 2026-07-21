@@ -20,7 +20,7 @@
 # ============================================================================
 # Discover modules by the presence of rtl/<m>/<m>.mk (notdir of its parent).
 RTL_MODULES := $(notdir $(patsubst %/,%,$(dir $(wildcard rtl/*/*.mk))))
-.PHONY: all list test clean sim sim-clean
+.PHONY: all list test clean sim sim-clean proc-console
 all: list
 list:
 	@echo "RISC-V-Proc-Proj  --  discovered RTL modules:"
@@ -65,10 +65,17 @@ PROG_TARGET := rtl-proc-test          # flip to rtl-proc-run for headless
 .PHONY: prog
 prog:
 ifndef PROG
-	$(error PROG not set. Usage: make prog PROG=<name>  for software/<name>.s)
+	$(error PROG not set. Usage: make prog PROG=<name>  for software/<name>.{s,c})
 endif
-	@test -f $(SW_DIR)/$(PROG).s || { echo "no such file: $(SW_DIR)/$(PROG).s"; exit 1; }
-	$(RISCV) $(ARCH) $(LDFLAGS) -o $(SW_DIR)/$(PROG).elf $(SW_DIR)/$(PROG).s
+	@if [ -f $(SW_DIR)/$(PROG).c ]; then \
+	  echo "[prog] C source -> crt0 + linker script"; \
+	  $(RISCV) $(ARCH) -T $(SW_DIR)/link.ld -nostdlib -nostartfiles -O1 \
+	    -o $(SW_DIR)/$(PROG).elf $(SW_DIR)/crt0.s $(SW_DIR)/$(PROG).c; \
+	elif [ -f $(SW_DIR)/$(PROG).s ]; then \
+	  $(RISCV) $(ARCH) $(LDFLAGS) -o $(SW_DIR)/$(PROG).elf $(SW_DIR)/$(PROG).s; \
+	else \
+	  echo "no such file: $(SW_DIR)/$(PROG).{c,s}"; exit 1; \
+	fi
 	$(OBJCOPY) -O binary $(SW_DIR)/$(PROG).elf $(SW_DIR)/$(PROG).bin
 	python3 -c "d=open('$(SW_DIR)/$(PROG).bin','rb').read(); d+=b'\x00'*((-len(d))%4); open('$(ROM)','w').write('\n'.join(f'{int.from_bytes(d[i:i+4],\"little\"):08x}' for i in range(0,len(d),4))+'\n')"
 	@$(MAKE) --no-print-directory $(PROG_TARGET)
@@ -81,3 +88,16 @@ sim:
 	@$(MAKE) --no-print-directory -C sim -f sim.mk all
 sim-clean:
 	@$(MAKE) --no-print-directory -C sim -f sim.mk clean
+# ---- interactive proc console: assemble PROG, run on proc with live stdin ---
+#   make proc-console PROG=<name>
+# Reuses the `prog` pipeline verbatim, overriding PROG_TARGET so the final
+# dispatch runs proc.mk's `console` (no piped stdin) instead of the headless
+# `test`. rtl-proc-console is the small delegating target it lands on.
+.PHONY: rtl-proc-console
+rtl-proc-console:
+	@$(MAKE) --no-print-directory -C sim -f sim.mk console
+proc-console:
+ifndef PROG
+	$(error PROG not set. Usage: make proc-console PROG=<name>)
+endif
+	@$(MAKE) --no-print-directory prog PROG=$(PROG) PROG_TARGET=rtl-proc-console

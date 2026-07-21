@@ -26,7 +26,11 @@ module regfile (
 		end
 	end
 
-	assign rdata1 = (raddr1 == 5'h0) ? 32'h0 : registers[raddr1];
-	assign rdata2 = (raddr2 == 5'h0) ? 32'h0 : registers[raddr2];
+	assign rdata1 = (raddr1 == 5'd0) ? 32'h0
+              : (wen && waddr == raddr1) ? wdata
+              : registers[raddr1];
+	assign rdata2 = (raddr2 == 5'd0) ? 32'h0
+              : (wen && waddr == raddr2) ? wdata
+              : registers[raddr2];
 
 endmodule

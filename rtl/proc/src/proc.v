@@ -212,16 +212,31 @@ module proc(
  	reg exmem_cu_jump;
  	reg exmem_cu_jalr;
   reg [31:0] exmem_rdata2;
+  reg [2:0] exmem_funct3;
 
   // MEM Stage Stuff
+  wire [3:0] memwrap_wstrb;
+  wire [31:0] memwrap_store_out;
+  wire [31:0] memwrap_load_out;
   wire [31:0] dataMem_rdata;
-  wire [3:0] dataMem_wstrb = exmem_cu_mem_write ? 4'b1111 : 4'b0000;
+  mem_wrapper memWrapper(
+  .funct3(exmem_funct3),      			// size + signedness (from the instruction)
+  .addr_lo(exmem_alu_out[1:0]),     // addr[1:0] — byte offset within the word
+  .store_data(exmem_rdata2),  			// rs2 value to store (right-justified)
+  .load_word(dataMem_rdata),   			// raw 32-bit word from data_mem
+  .mem_write(exmem_cu_mem_write),   // is this a store?
+  .wstrb(memwrap_wstrb),       			// byte-write enables -> data_mem
+  .store_out(memwrap_store_out),   	// byte-shifted store data -> data_mem wdata
+  .load_out(memwrap_load_out)     	// extracted + extended load result -> WB
+  );
+
+  // wire [3:0] dataMem_wstrb = exmem_cu_mem_write ? 4'b1111 : 4'b0000;
   data_mem dataMem(
   	.clk(clk),
   	.rstb(rstb),
   	.addr(exmem_alu_out),        	// byte address
-  	.wdata(exmem_rdata2),       	// write data (right-justified)
-  	.wstrb(dataMem_wstrb),       	// byte-write enables: bit i set means wdata word's byte i written
+  	.wdata(memwrap_store_out),       	// write data (right-justified)
+  	.wstrb(memwrap_wstrb),       	// byte-write enables: bit i set means wdata word's byte i written
   	.mem_read(exmem_cu_mem_read), // read enable
   	.rdata(dataMem_rdata)        	// raw 32-bit word at addr (aligned)
   );
@@ -293,6 +308,7 @@ module proc(
       exmem_alu_out <= 0;
       exmem_rd <= 0;
       exmem_rdata2 <= 0;
+      exmem_funct3 <= 0;
 
       memwb_pcPlus4 <= 0;
       memwb_cu_reg_write <= 0;
@@ -343,16 +359,16 @@ module proc(
       	idex_rd 					<= 0;
       	idex_funct3 			<= 0;
       	idex_funct7 			<= 0;
-     	idex_cu_reg_write <= 0;
-     	idex_cu_alu_src_a <= 0;
-     	idex_cu_alu_src_b <= 0;
-     	idex_cu_alu_op 		<= 0;
-     	idex_cu_mem_read 	<= 0;
-     	idex_cu_mem_write <= 0;
-     	idex_cu_wb_sel 		<= 0;
-     	idex_cu_branch 		<= 0;
-     	idex_cu_jump 			<= 0;
-     	idex_cu_jalr 			<= 0;
+      	idex_cu_reg_write <= 0;
+      	idex_cu_alu_src_a <= 0;
+      	idex_cu_alu_src_b <= 0;
+      	idex_cu_alu_op 		<= 0;
+      	idex_cu_mem_read 	<= 0;
+      	idex_cu_mem_write <= 0;
+      	idex_cu_wb_sel 		<= 0;
+      	idex_cu_branch 		<= 0;
+      	idex_cu_jump 			<= 0;
+      	idex_cu_jalr 			<= 0;
      	end else begin
     		ifid_pc <= pcout;
      		ifid_pcPlus4 <= pcadd4out;
@@ -391,12 +407,13 @@ module proc(
       exmem_alu_out <= aluout;
       exmem_rd <= idex_rd;
       exmem_rdata2 <= fwd_rdata2;
+      exmem_funct3 <= idex_funct3;
 
       memwb_pcPlus4 <= exmem_pcPlus4;
       memwb_cu_reg_write <= exmem_cu_reg_write;
       memwb_cu_wb_sel <= exmem_cu_wb_sel;
       memwb_alu_out <= exmem_alu_out;
-      memwb_dataMem_rdata <= dataMem_rdata;
+      memwb_dataMem_rdata <= memwrap_load_out;
       memwb_rd <= exmem_rd;
     end
   end

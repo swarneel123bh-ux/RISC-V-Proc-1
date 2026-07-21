@@ -34,7 +34,8 @@ DEPS := $(wildcard \
 	../data_mem/src/data_mem.v \
 	../branch_unit/src/branch_unit.v \
 	../forwarding_unit/src/forwarding_unit.v \
-	../hazard_detection_unit/src/hazard_detection_unit.v)
+	../hazard_detection_unit/src/hazard_detection_unit.v \
+	../mem_wrapper/src/mem_wrapper.v)
 TBENCH  := $(TB_DIR)/$(TB).v
 
 OUT  := $(VVP_DIR)/$(TB).vvp

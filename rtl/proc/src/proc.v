@@ -8,7 +8,7 @@ module proc(
 	reg clk;
   always begin #5; clk = ~clk; end
 
-  // instruction fetch stage stuff
+  // IF Stage Stuff
   wire [31:0] pcin;
   wire [31:0] pcout;
   wire [31:0] pcadd4out;
@@ -30,7 +30,6 @@ module proc(
   .in(pcout),
   .out(pcadd4out)
   );
-
   wire [31:0] instructionmeminstr;
   instruction_mem #(.SYNC(0)) instructionmem(
   	.clk(clk),
@@ -38,12 +37,13 @@ module proc(
     .instr(instructionmeminstr)
   );
 
-  // if/id pipeline register
+  // IF/ID pipeline register
   reg [31:0] ifid_pc;
   reg [31:0] ifid_pcPlus4;
   reg [31:0] ifid_instr;
 
-  // instruction decode stage stuff
+  // ID Stage Stuff
+  //
   // wiring out the signals to regsiter file so its easier to instantiate module
   // opcode (7 bit): partially specifies which of the 6 types of instruction formats
   // funct7 + funct3 (10 bit): combined with opcode, these two fields describe what operation to perform
@@ -62,11 +62,9 @@ module proc(
   	.ifid_instr(ifid_instr),
    	.immdata(id_immdata)
   );
-
   // immediate + control decode also live here (combinational)
   wire [31:0] registerfilerdata1;
   wire [31:0] registerfilerdata2;
-
   reg [31:0] wb_mux;			// Writing here since we need the loopback
   reg memwb_cu_reg_write;	// Same
   reg [4:0] memwb_rd;			// Same
@@ -82,7 +80,7 @@ module proc(
     .wdata(wb_mux)
   );
 
-  // Control Unit stuff
+  // CU Stuff
  	wire cu_reg_write;
  	wire [1:0] cu_alu_src_a;
  	wire cu_alu_src_b;
@@ -137,47 +135,80 @@ module proc(
   	.funct7(idex_funct7),
   	.alu_control_out(aluctrl_out)
   );
-  reg [31:0] alusrca;	// MUX to determine alu_src_a;
-  always @(*) begin
+  reg [4:0] exmem_rd;				// NEED TO DECLARE HERE FOR USE IN FORWARDING UNIT
+ 	reg exmem_cu_reg_write;		// SAME REASON
+  wire [1:0] forwardingUnit_forwardA;
+  wire [1:0] forwardingUnit_forwardB;
+  forwarding_unit forwardingUnit(
+  	.idex_rs1(idex_rs1),
+  	.idex_rs2(idex_rs2),
+  	.exmem_rd(exmem_rd),
+  	.exmem_reg_write(exmem_cu_reg_write),
+  	.memwb_rd(memwb_rd),
+  	.memwb_reg_write(memwb_cu_reg_write),
+  	.forward_a(forwardingUnit_forwardA),
+  	.forward_b(forwardingUnit_forwardB)
+  );
+  reg [31:0] exmem_alu_out;	// NEED DECLARED HERE
+  reg [31:0] alusrca, alusrcb;
+  reg [31:0] fwd_rdata1, fwd_rdata2;
+  always @(*) begin		// Choose forwarded rdata1
+  	fwd_rdata1 = idex_rdata1;							// Default REGFILE
+ 		case (forwardingUnit_forwardA)
+   		2'b00: fwd_rdata1 = idex_rdata1; 		// FROM REGFILE
+     	2'b01: fwd_rdata1 = wb_mux; 				// FROM MEM STAGE
+      2'b10: fwd_rdata1 = exmem_alu_out;	// FROM EX STAGE
+   	endcase
+  end
+  always @(*) begin		// Choose forwarded rdata2
+ 		fwd_rdata2 = idex_rdata2;							// Default REGFILE
+		case (forwardingUnit_forwardB)
+  		2'b00: fwd_rdata2 = idex_rdata2; 		// FROM REGFILE
+    	2'b01: fwd_rdata2 = wb_mux; 				// FROM MEM STAGE
+     2'b10: fwd_rdata2 = exmem_alu_out;		// FROM EX STAGE
+  	endcase
+  end
+  always @(*) begin		// ALUSrcA Mux
   	alusrca = 32'h0;
  		case (idex_cu_alu_src_a)
-   		2'b00: alusrca = idex_rdata1;
+   		2'b00: alusrca = fwd_rdata1;
      	2'b01: alusrca = idex_pc;
       2'b10: alusrca = 32'h0;
    	endcase
+  end
+  always @(*) begin 	// ALUSrcB Mux
+  	alusrcb = (idex_cu_alu_src_b) ? idex_immdata : fwd_rdata2;
   end
   wire [31:0] aluout;
   wire aluzero;
   alu alu_(
   	.aluop_ctrl(aluctrl_out),
   	.alu_a(alusrca),
-  	.alu_b((idex_cu_alu_src_b) ? idex_immdata : idex_rdata2),
+  	//.alu_b((idex_cu_alu_src_b) ? idex_immdata : idex_rdata2),
+   	.alu_b(alusrcb),
   	.alu_out(aluout),
   	.alu_zero(aluzero)
   );
   wire branchUnit_take;
   branch_unit branchUnit(
  		.funct3(idex_funct3),
-  	.rdata1(idex_rdata1),
-  	.rdata2(idex_rdata2),
+  	.rdata1(fwd_rdata1),
+  	.rdata2(fwd_rdata2),
   	.take(branchUnit_take)
   );
   wire [31:0] branchDestination = (idex_pc + idex_immdata);							// Branches and JAL
-  wire [31:0] jalrDestination = (idex_rdata1 + idex_immdata) & ~32'b1;	// Only for JALR (last bit needs reset)
+  wire [31:0] jalrDestination = (fwd_rdata1 + idex_immdata) & ~32'b1;	// Only for JALR (last bit needs reset)
   assign pcInMuxSel = (idex_cu_branch & branchUnit_take) | idex_cu_jump | idex_cu_jalr;
   assign pcBranchTarget = idex_cu_jalr ? jalrDestination : branchDestination;
 
   // EX/MEM Pipeline register
   reg [31:0] exmem_pcPlus4;
- 	reg exmem_cu_reg_write;
  	reg exmem_cu_mem_read;
  	reg exmem_cu_mem_write;
  	reg [1:0] exmem_cu_wb_sel;
  	reg exmem_cu_branch;
  	reg exmem_cu_jump;
  	reg exmem_cu_jalr;
-  reg [31:0] exmem_alu_out;
-  reg [4:0] exmem_rd;
   reg [31:0] exmem_rdata2;
 
   // MEM Stage Stuff
@@ -198,8 +229,6 @@ module proc(
   reg [1:0] memwb_cu_wb_sel;
   reg [31:0] memwb_alu_out;
   reg [31:0] memwb_dataMem_rdata;
-  // reg [4:0] memwb_rd;
-  // reg memwb_cu_reg_write;
 
   // WB Stage Stuff
   always @(*) begin
@@ -324,7 +353,7 @@ module proc(
       exmem_cu_jalr <= idex_cu_jalr;
       exmem_alu_out <= aluout;
       exmem_rd <= idex_rd;
-      exmem_rdata2 <= idex_rdata2;
+      exmem_rdata2 <= fwd_rdata2;
 
       memwb_pcPlus4 <= exmem_pcPlus4;
       memwb_cu_reg_write <= exmem_cu_reg_write;

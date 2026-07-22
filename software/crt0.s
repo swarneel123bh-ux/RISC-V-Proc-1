@@ -1,8 +1,17 @@
-# crt0.s — startup: set stack, call main, halt. Linked first (address 0x0).
+# crt0.s — startup: zero .bss, set stack, call main, spin. Linked first at 0x0.
 .section .text.init
 .globl _start
 _start:
-  li    sp, 0x1000        # top of 4KB RAM; grows down. Adjust if RAM size changes.
+  # zero .bss over [__bss_start, __bss_end)
+  la    t0, __bss_start
+  la    t1, __bss_end
+1:
+  bgeu  t0, t1, 2f
+  sw    zero, 0(t0)
+  addi  t0, t0, 4
+  j     1b
+2:
+  la    sp, __stack_top     # was: li sp, 0x1000
   call  main
 halt:
   j     halt

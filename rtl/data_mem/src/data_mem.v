@@ -34,10 +34,15 @@ module data_mem //#(
 	// 		$readmemh(INIT_FILE, int_mem);
 	// 	end
 	// end
+	//
+	// Base Addresses of the devices
+	localparam VRAMBASE = 32'hFFFE0000;
+	localparam UARTBASE = 32'hFFFF0000;
 
 	// MMIO decode
-	wire is_uart = (addr >= 32'hFFFF0000);
-	wire is_ram = ~is_uart;
+	wire is_uart = (addr >= UARTBASE);
+	wire is_vram = ((addr >= VRAMBASE) && (addr < UARTBASE));
+	wire is_ram = ~(is_uart | is_vram);
 
 	// RAM Path (Umem)
 	assign umem_addr = addr;
@@ -45,14 +50,24 @@ module data_mem //#(
 	assign umem_wstrb = is_ram ? wstrb : 4'b0000;
 	assign umem_read = is_ram & mem_read;
 
+	// VRAM Instance
+	wire [31:0] vram_addr = addr - VRAMBASE;
+	wire [3:0] vram_wstrb = is_vram ? wstrb : 4'b0000;
+	wire vram_read = is_vram & mem_read;
+	wire [31:0] vram_rdata;
+	vram vram_inst(
+		.clk(clk),
+		// CPU side ports
+		.cpu_addr(vram_addr),
+		.cpu_wdata(wdata),
+		.cpu_wstrb(vram_wstrb),
+		.cpu_read(vram_read),
+		.cpu_rdata(vram_rdata),
+		// Scanout side ports (for SDL)
+		.scan_widx(32'h0),		// <- Need to expose to proc.v so that we can wire it to display.v
+		.scan_rdata()					// <- Need to expose to proc.v so that we can wire it to display.v
+	);
 
-	// always @(posedge clk) begin
-	// 	if (wstrb[0]) int_mem[widx][7:0] <= wdata[7:0];
-	// 	if (wstrb[1]) int_mem[widx][15:8] <= wdata[15:8];
-	// 	if (wstrb[2]) int_mem[widx][23:16] <= wdata[23:16];
-	// 	if (wstrb[3]) int_mem[widx][31:24] <= wdata[31:24];
-	// end
-	// wire [31:0] ram_data = (mem_read & is_ram) ? int_mem[widx] : 32'h0;
 
 	// UART instance
 	wire uart_we = is_uart & (|wstrb);
@@ -72,6 +87,8 @@ module data_mem //#(
 	);
 
 	// Final output
-	assign rdata = is_uart ? uart_rdata : umem_rdata;
+	assign rdata = 	is_uart ? uart_rdata :
+									is_vram ? vram_rdata :
+									umem_rdata;
 
 endmodule

@@ -41,25 +41,25 @@ void bubblesort(int* arr, int size) {
 	}
 }
 
-/*int main() {
+int main() {
 	int arr[] = {1, 4, 2, 6, 8, 3, 5, 7, 9, 10};
 	int size = 10;
-	//print_str("Before: ");
+	print_str("Before: ");
 	for (int i = 0; i < size; i ++) {
 		print_int(arr[i]);
-		// print_str(" ");
+		print_str(" ");
 		putchar(' ');
 	}
-	//print_str("\nAfter: ");
+	print_str("\nAfter: ");
 	bubblesort(arr, size);
 	for (int i = 0; i < size; i ++) {
 		print_int(arr[i]);
-		//print_str(" ");
+		print_str(" ");
 		putchar(' ');
 	}
 	while (1);
 	return 0;
-	}*/
+}
 
 /*int main() {
   putchar('A');
@@ -68,13 +68,13 @@ void bubblesort(int* arr, int size) {
   while (1);
   }*/
 
-int main() {
-  int arr[10];
-  arr[0]=1; arr[1]=4; arr[2]=2; arr[3]=6; arr[4]=8;
-  arr[5]=3; arr[6]=5; arr[7]=7; arr[8]=9; arr[9]=10;
-  int size = 10;
-  for (int i = 0; i < size; i++) { print_int(arr[i]); putchar(' '); }
-  bubblesort(arr, size);
-  for (int i = 0; i < size; i++) { print_int(arr[i]); putchar(' '); }
-  while (1);
-}
+// int main() {
+//   int arr[10];
+//   arr[0]=1; arr[1]=4; arr[2]=2; arr[3]=6; arr[4]=8;
+//   arr[5]=3; arr[6]=5; arr[7]=7; arr[8]=9; arr[9]=10;
+//   int size = 10;
+//   for (int i = 0; i < size; i++) { print_int(arr[i]); putchar(' '); }
+//   bubblesort(arr, size);
+//   for (int i = 0; i < size; i++) { print_int(arr[i]); putchar(' '); }
+//   while (1);
+// }

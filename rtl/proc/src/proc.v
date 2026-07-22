@@ -33,10 +33,13 @@ module proc(
   .out(pcadd4out)
   );
   wire [31:0] instructionmeminstr;
-  instruction_mem #(.SYNC(0)) instructionmem(
+  wire [31:0] imem_um_addr, imem_um_rdata;
+  instruction_mem instructionmem(
   	.clk(clk),
    	.addr(pcout),
-    .instr(instructionmeminstr)
+    .instr(instructionmeminstr),
+    .umem_addr(imem_um_addr),
+    .umem_rdata(imem_um_rdata)
   );
 
   // IF/ID pipeline register
@@ -231,14 +234,40 @@ module proc(
   );
 
   // wire [3:0] dataMem_wstrb = exmem_cu_mem_write ? 4'b1111 : 4'b0000;
+  wire [31:0] dmem_um_addr, dmem_um_wdata, dmem_um_rdata;
+  wire [3:0] dmem_um_wstrb;
+  wire dmem_um_read;
   data_mem dataMem(
-  	.clk(clk),
+  	// Proc side ports
+ 		.clk(clk),
   	.rstb(rstb),
   	.addr(exmem_alu_out),        	// byte address
   	.wdata(memwrap_store_out),       	// write data (right-justified)
   	.wstrb(memwrap_wstrb),       	// byte-write enables: bit i set means wdata word's byte i written
   	.mem_read(exmem_cu_mem_read), // read enable
-  	.rdata(dataMem_rdata)        	// raw 32-bit word at addr (aligned)
+  	.rdata(dataMem_rdata),        	// raw 32-bit word at addr (aligned)
+  	// Unified memory side ports
+  	.umem_addr(dmem_um_addr),
+  	.umem_wdata(dmem_um_wdata),
+  	.umem_wstrb(dmem_um_wstrb),
+  	.umem_read(dmem_um_read),
+  	.umem_rdata(dmem_um_rdata)
+   );
+
+  // Unified Memory
+  unified_memory unifiedMemory(
+  	.clk(clk),
+
+   	// Instruction side ports, read-only, async
+   	.imem_addr(imem_um_addr),
+   	.imem_rdata(imem_um_rdata),
+
+    // Data side ports, async read + sync byte-strobed write
+    .dmem_addr(dmem_um_addr),
+    .dmem_wdata(dmem_um_wdata),
+    .dmem_wstrb(dmem_um_wstrb),
+    .dmem_read(dmem_um_read),
+    .dmem_rdata(dmem_um_rdata)
   );
 
   // MEM/WB Pipeline Register

@@ -152,22 +152,29 @@ int main(int argc, char **argv) {
         break;
 
       case SDL_KEYDOWN: {
+      	if (ev.key.repeat) break;          // ignore OS auto-repeat entirely
         SDL_Keycode k = ev.key.keysym.sym;
         switch (k) {
-        case SDLK_ESCAPE:    running = 0;      break;
-        case SDLK_RETURN:
-        case SDLK_KP_ENTER:  send_key(0x0D);   break;
-        case SDLK_BACKSPACE: send_key(0x08);   break;
-        case SDLK_SPACE:     send_key(' ');    break;
-        // arrows -> single letters, easier for bare-metal C than escapes
-        case SDLK_UP:        send_key('U');    break;
-        case SDLK_DOWN:      send_key('D');    break;
-        case SDLK_LEFT:      send_key('L');    break;
-        case SDLK_RIGHT:     send_key('R');    break;
-        default:
-          // printable ASCII: send lowercase letters/digits directly.
-          if (k >= 32 && k < 127) send_key((unsigned char)k);
-          break;
+        	case SDLK_ESCAPE: running = 0;   break;
+        	case SDLK_w:      send_key(0x11); break;   // left  up   press
+        	case SDLK_s:      send_key(0x12); break;   // left  down press
+        	case SDLK_UP:     send_key(0x13); break;   // right up   press
+        	case SDLK_DOWN:   send_key(0x14); break;   // right down press
+        	default:
+          	if (k >= 32 && k < 127) send_key((unsigned char)k);
+            break;
+        }
+        break;
+      }
+
+      case SDL_KEYUP: {
+      	SDL_Keycode k = ev.key.keysym.sym;
+        switch (k) {
+        	case SDLK_w:    send_key(0x21); break;     // left  up   release
+        	case SDLK_s:    send_key(0x22); break;     // left  down release
+        	case SDLK_UP:   send_key(0x23); break;     // right up   release
+        	case SDLK_DOWN: send_key(0x24); break;     // right down release
+        	default: break;
         }
         break;
       }

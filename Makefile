@@ -20,7 +20,7 @@
 # ============================================================================
 # Discover modules by the presence of rtl/<m>/<m>.mk (notdir of its parent).
 RTL_MODULES := $(notdir $(patsubst %/,%,$(dir $(wildcard rtl/*/*.mk))))
-.PHONY: all list test clean sim sim-clean proc-console
+.PHONY: all list test clean sim sim-clean proc-console proc-screen proc-screen_only
 all: list
 list:
 	@echo "RISC-V-Proc-Proj  --  discovered RTL modules:"
@@ -101,3 +101,24 @@ ifndef PROG
 	$(error PROG not set. Usage: make proc-console PROG=<name>)
 endif
 	@$(MAKE) --no-print-directory prog PROG=$(PROG) PROG_TARGET=rtl-proc-console
+.PHONY: rtl-proc-screen
+rtl-proc-screen:
+	@$(MAKE) --no-print-directory -C sim -f sim.mk screen
+
+proc-screen:
+ifndef PROG
+	$(error PROG not set. Usage: make proc-screen PROG=<name>)
+else
+	@$(MAKE) --no-print-directory prog PROG=$(PROG) PROG_TARGET=rtl-proc-screen
+endif
+
+.PHONY: rtl-proc-screen_only
+rtl-proc-screen_only:
+	@$(MAKE) --no-print-directory -C sim -f sim.mk screen_only
+
+proc-screen_only:
+ifndef PROG
+	$(error PROG not set. Usage: make proc-screen_only PROG=<name>)
+else
+	@$(MAKE) --no-print-directory prog PROG=$(PROG) PROG_TARGET=rtl-proc-screen_only
+endif

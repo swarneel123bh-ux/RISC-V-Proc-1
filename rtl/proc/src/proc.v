@@ -8,16 +8,47 @@ module proc(
 	reg clk;
   always begin #5; clk = ~clk; end
 
+  // Branch predictor diagnostics wires
+  reg [31:0] cyc_count;
+  reg [31:0] branch_count;
+  reg [31:0] mispredict_count;
+
   // IF Stage Stuff
+  // Branch Predictor
+  reg [31:0] idex_pc;			// Need these two idex registers declared here for branch predictor connections
+  reg [31:0] idex_pcPlus4;
   wire [31:0] pcin_, pcin;
   wire [31:0] pcout;
   wire [31:0] pcadd4out;
   wire [31:0] pcBranchTarget;
+  wire actualTaken;
+  wire [31:0] branchPredictor_predict_target;
+  wire branchPredictor_predict_taken_;
+  wire branchPredictor_predict_taken; //= 1'b0;
+  wire [31:0] pcBranchMispredictRecover = actualTaken ? pcBranchTarget : idex_pcPlus4;
+  wire [31:0] pcSeqOrPred = branchPredictor_predict_taken ? branchPredictor_predict_target : pcadd4out;
   wire pcInMuxSel;
   wire hdu_stall;
+ 	reg idex_cu_branch;	// Need these defined here
+ 	reg idex_cu_jump;
+ 	reg idex_cu_jalr;
+  branch_predictor branchPredictor(
+  	.clk(clk),
+   	.rstb(rstb),
+		// Prediction port, connects to IF
+		.pc(pcout),
+		.predict_taken(branchPredictor_predict_taken_),
+		.predict_target(branchPredictor_predict_target),
+		// Updation port, connects to EX
+		.update(idex_cu_branch | idex_cu_jump | idex_cu_jalr),
+		.new_pc(idex_pc),
+		.update_taken(actualTaken),
+		.update_target(pcBranchTarget)
+  );
+  assign branchPredictor_predict_taken = branchPredictor_predict_taken_;
   mux2x1_32 pcinmux(
-  	.in1(pcadd4out),
-   	.in2(pcBranchTarget),
+  	.in1(pcSeqOrPred),
+   	.in2(pcBranchMispredictRecover),
     .sel(pcInMuxSel),
     .out(pcin_)
   );
@@ -46,6 +77,8 @@ module proc(
   reg [31:0] ifid_pc;
   reg [31:0] ifid_pcPlus4;
   reg [31:0] ifid_instr;
+  reg ifid_branchPredictor_predict_taken;
+  reg [31:0] ifid_branchPredictor_predict_target;
 
   // ID Stage Stuff
   //
@@ -111,8 +144,6 @@ module proc(
   );
 
   // ID/EX PIPELINE REGISTER
-  reg [31:0] idex_pc;
-  reg [31:0] idex_pcPlus4;
   reg [31:0] idex_rdata1;
   reg [31:0] idex_rdata2;
   reg [31:0] idex_immdata;
@@ -128,9 +159,8 @@ module proc(
  	reg idex_cu_mem_read;
  	reg idex_cu_mem_write;
  	reg [1:0] idex_cu_wb_sel;
- 	reg idex_cu_branch;
- 	reg idex_cu_jump;
- 	reg idex_cu_jalr;
+  reg idex_branchPredictor_predict_taken;
+  reg [31:0] idex_branchPredictor_predict_target;
 
   // EX Stage stuff
   wire [3:0] aluctrl_out;
@@ -202,9 +232,15 @@ module proc(
   	.take(branchUnit_take)
   );
   wire [31:0] branchDestination = (idex_pc + idex_immdata);							// Branches and JAL
-  wire [31:0] jalrDestination = (fwd_rdata1 + idex_immdata) & ~32'b1;	// Only for JALR (last bit needs reset)
-  assign pcInMuxSel = (idex_cu_branch & branchUnit_take) | idex_cu_jump | idex_cu_jalr;
+  wire [31:0] jalrDestination = (fwd_rdata1 + idex_immdata) & ~32'b1;		// Only for JALR (last bit needs reset)
   assign pcBranchTarget = idex_cu_jalr ? jalrDestination : branchDestination;
+  assign actualTaken = (idex_cu_branch & branchUnit_take) | idex_cu_jump | idex_cu_jalr;	// Actual Branch signal
+  //wire is_ctrl = idex_cu_branch | idex_cu_jalr | idex_cu_jump;
+  wire branchUnit_mispredict =
+  	(/*is_ctrl	&*/ (actualTaken != idex_branchPredictor_predict_taken)) |
+   	//(~is_ctrl & idex_branchPredictor_predict_taken) |
+  	(/*is_ctrl &*/ (actualTaken & (pcBranchTarget != idex_branchPredictor_predict_target)));	// Check if actual signal is same as predicted signal
+  assign pcInMuxSel = branchUnit_mispredict;
 
   // EX/MEM Pipeline register
   reg [31:0] exmem_pcPlus4;
@@ -301,9 +337,16 @@ module proc(
   	if (!rstb) begin
    		clk <= 0;
 
+	    cyc_count        <= 0;
+	    branch_count     <= 0;
+	    mispredict_count <= 0;
+
      	ifid_instr 	<= 0;
      	ifid_pc 		<= 0;
      	ifid_pcPlus4 <= 0;
+      ifid_branchPredictor_predict_taken <= 0;
+      ifid_branchPredictor_predict_target <= 0;
+
 
       idex_pc <= 0;
       idex_pcPlus4 <= 0;
@@ -325,6 +368,8 @@ module proc(
      	idex_cu_branch <= 0;
      	idex_cu_jump <= 0;
      	idex_cu_jalr <= 0;
+      idex_branchPredictor_predict_taken <= 0;
+      idex_branchPredictor_predict_target <= 0;
 
       exmem_pcPlus4 <= 0;
       exmem_cu_reg_write <= 0;
@@ -347,10 +392,19 @@ module proc(
       memwb_rd <= 0;
 
    	end else begin
+    	// Branch predictor diagnostics upate
+	    cyc_count <= cyc_count + 1;
+	    if (idex_cu_branch | idex_cu_jump | idex_cu_jalr) begin
+	      branch_count <= branch_count + 1;
+	      if (branchUnit_mispredict) mispredict_count <= mispredict_count + 1;
+	    end
+
     	if (pcInMuxSel) begin	// PC will change to 1 now, need to flush last pipeline (two nops => need to flush IF and ID)
     		ifid_pc 			<= 0;
      		ifid_pcPlus4 	<= 0;
      		ifid_instr 		<= 32'h00000013;	// Decodes to NOP, better than just 0;
+       	ifid_branchPredictor_predict_taken <= 0;
+        ifid_branchPredictor_predict_target <= 0;
 
        	idex_pc 					<= 0;
        	idex_pcPlus4 			<= 0;
@@ -372,11 +426,15 @@ module proc(
       	idex_cu_branch 		<= 0;
       	idex_cu_jump 			<= 0;
       	idex_cu_jalr 			<= 0;
+       	idex_branchPredictor_predict_taken <= 0;
+       	idex_branchPredictor_predict_target <= 0;
     	end else if (hdu_stall) begin
      		// FREEZE IFID, BUBBLE IDEX
      		ifid_pc 			<= ifid_pc;
        	ifid_pcPlus4 	<= ifid_pcPlus4;
       	ifid_instr 		<= ifid_instr;
+      	ifid_branchPredictor_predict_taken <= ifid_branchPredictor_predict_taken;
+       	ifid_branchPredictor_predict_target <= ifid_branchPredictor_predict_target;
 
       	idex_pc 					<= 0;
       	idex_pcPlus4 			<= 0;
@@ -398,10 +456,14 @@ module proc(
       	idex_cu_branch 		<= 0;
       	idex_cu_jump 			<= 0;
       	idex_cu_jalr 			<= 0;
+      	idex_branchPredictor_predict_taken <= 0;
+      	idex_branchPredictor_predict_target <= 0;
      	end else begin
     		ifid_pc <= pcout;
      		ifid_pcPlus4 <= pcadd4out;
      		ifid_instr <= instructionmeminstr;
+       	ifid_branchPredictor_predict_taken <= branchPredictor_predict_taken;
+       	ifid_branchPredictor_predict_target <= branchPredictor_predict_target;
 
       	idex_pc <= ifid_pc;
        	idex_pcPlus4 <= ifid_pcPlus4;
@@ -423,6 +485,8 @@ module proc(
       	idex_cu_branch <= cu_branch;
       	idex_cu_jump <= cu_jump;
       	idex_cu_jalr <= cu_jalr;
+       	idex_branchPredictor_predict_taken <= ifid_branchPredictor_predict_taken;
+        idex_branchPredictor_predict_target <= ifid_branchPredictor_predict_target;
      	end
 
       exmem_pcPlus4 <= idex_pcPlus4;

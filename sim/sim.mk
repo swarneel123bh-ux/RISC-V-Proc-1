@@ -43,7 +43,8 @@ SOURCES := \
   $(RTL)/hazard_detection_unit/src/hazard_detection_unit.v \
   $(RTL)/mem_wrapper/src/mem_wrapper.v \
   $(RTL)/unified_memory/src/unified_memory.v \
-  $(RTL)/vram/src/vram.v
+  $(RTL)/vram/src/vram.v \
+  $(RTL)/branch_predictor/src/branch_predictor.v
 
 OUT     := $(VVP_DIR)/$(TB).vvp
 ROM     := ../software/rom/program.hex

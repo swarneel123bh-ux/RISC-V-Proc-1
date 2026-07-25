@@ -214,5 +214,6 @@ int main(void) {
   }
 
   putstr("bye\n");
-  for (;;) { }
+  putchar(0x04);
+  for (;;) {}
 }

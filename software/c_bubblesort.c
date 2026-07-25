@@ -57,6 +57,7 @@ int main() {
 		print_str(" ");
 		putchar(' ');
 	}
+	putchar(0x04);
 	while (1);
 	return 0;
 }

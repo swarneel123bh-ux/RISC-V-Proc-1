@@ -43,7 +43,8 @@ DEPS := $(wildcard \
 	../mem_wrapper/src/mem_wrapper.v \
 	../uart/src/uart.v \
 	../unified_memory/src/unified_memory.v \
-	../vram/src/vram.v)
+	../vram/src/vram.v \
+	../branch_predictor/src/branch_predictor.v)
 TBENCH  := $(TB_DIR)/$(TB).v
 
 OUT  := $(VVP_DIR)/$(TB).vvp

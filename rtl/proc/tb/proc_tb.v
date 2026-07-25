@@ -18,6 +18,9 @@ module proc_tb();
     #2000;
     for (j = 0; j <= 31; j = j + 1)
       $display("x%0d = %08h", j, uut.registerfile.registers[j]);
+
+    $display("cycles=%0d branches=%0d mispredicts=%0d percentage_mispredicts=%00d%%",
+    uut.cyc_count, uut.branch_count, uut.mispredict_count, (uut.mispredict_count*100/uut.branch_count));
     $finish;
   end
 endmodule

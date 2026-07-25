@@ -63,21 +63,21 @@ module branch_predictor #(
 			if (update) begin
 				// Counter State Machine
 				// Lee and A.Smith 1984
-				case (bht[update_idx])
-					2'b00: bht[update_idx] <= (update_taken) ? 2'b01 : 2'b00;	// SNT -> WNT : SNT -> STN
-					2'b01: bht[update_idx] <= (update_taken) ? 2'b11 : 2'b00;	// WNT -> ST  : WNT -> SNT
-					2'b10: bht[update_idx] <= (update_taken) ? 2'b11 : 2'b00;	// WT  -> ST 	: WT  -> SNT
-					2'b11: bht[update_idx] <= (update_taken) ? 2'b11 : 2'b10;	// ST  -> ST  : ST  -> WT
-				endcase
+				// case (bht[update_idx])
+				// 	2'b00: bht[update_idx] <= (update_taken) ? 2'b01 : 2'b00;	// SNT -> WNT : SNT -> STN
+				// 	2'b01: bht[update_idx] <= (update_taken) ? 2'b11 : 2'b00;	// WNT -> ST  : WNT -> SNT
+				// 	2'b10: bht[update_idx] <= (update_taken) ? 2'b11 : 2'b00;	// WT  -> ST 	: WT  -> SNT
+				// 	2'b11: bht[update_idx] <= (update_taken) ? 2'b11 : 2'b10;	// ST  -> ST  : ST  -> WT
+				// endcase
 
 				// Counter State Machine
 				// J.Smith Saturating Counter 1981
-				// case (bht[update_idx])
-				// 	2'b00: bht[update_idx] <= (update_taken) ? 2'b01 : 2'b00;
-				// 	2'b01: bht[update_idx] <= (update_taken) ? 2'b10 : 2'b00;
-				// 	2'b10: bht[update_idx] <= (update_taken) ? 2'b11 : 2'b01;
-				// 	2'b11: bht[update_idx] <= (update_taken) ? 2'b11 : 2'b10;
-				// endcase
+				case (bht[update_idx])
+					2'b00: bht[update_idx] <= (update_taken) ? 2'b01 : 2'b00;
+					2'b01: bht[update_idx] <= (update_taken) ? 2'b10 : 2'b00;
+					2'b10: bht[update_idx] <= (update_taken) ? 2'b11 : 2'b01;
+					2'b11: bht[update_idx] <= (update_taken) ? 2'b11 : 2'b10;
+				endcase
 
 				// BTB Modification If Taken
 				if (update_taken) begin

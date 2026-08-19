@@ -26,11 +26,17 @@ list:
 	@echo "RISC-V-Proc-Proj  --  discovered RTL modules:"
 	@for m in $(RTL_MODULES); do echo "  - $$m"; done
 	@echo ""
-	@echo "Usage: make rtl-<m> | rtl-<m>-test | rtl-<m>-run | rtl-<m>-clean"
-	@echo "       make test   (all modules, headless)"
-	@echo "       make clean  (all modules + sim)"
-	@echo "       make prog PROG=<name>  (assemble software/<name>.s -> hex, run on proc)"
-	@echo "       make uart-console  (interactive UART VPI sim)"
+	@echo "Usage: "
+	@echo "	make rtl-<m> | rtl-<m>-test | rtl-<m>-run | rtl-<m>-clean"
+	@echo "	make                 list discovered modules + usage"
+	@echo "	make rtl-<m>         build  rtl/<m>"
+	@echo "	make rtl-<m>-test    build + run headless"
+	@echo "	make rtl-<m>-run     build + run + open waveform in Surfer"
+	@echo "	make rtl-<m>-clean   remove rtl/<m>/build"
+	@echo "	make test            build + run every module headless"
+	@echo "	make clean           clean every module (+ sim)"
+	@echo "	make prog PROG=<n>   assemble software/<n>.s -> program.hex, run on proc"
+	@echo "	make sim / sim-clean  delegate to sim/sim.mk (co-sim harness, WIP)"
 # ---- per-module target generation ------------------------------------------
 define RTL_RULES
 .PHONY: rtl-$(1) rtl-$(1)-test rtl-$(1)-run rtl-$(1)-clean

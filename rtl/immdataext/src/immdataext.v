@@ -1,4 +1,5 @@
 `timescale 1ns / 1ps
+
 module immdataext (
 	input [31:0] ifid_instr,
 	output [31:0] immdata
@@ -13,7 +14,7 @@ module immdataext (
 	// U-type
 	wire [31:0] imm_u = {ifid_instr[31:12], 12'b0};
 
-	// B-type (note the scramble + implicit 0)
+	// B-type
 	wire [31:0] imm_b = {
 		{19{ifid_instr[31]}},
 		ifid_instr[31],

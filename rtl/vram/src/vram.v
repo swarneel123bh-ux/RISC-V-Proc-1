@@ -33,20 +33,16 @@ module vram #(
 
 	wire [AW-1:0] cpu_widx = cpu_addr[AW+1:2];
 
-	wire [31:0] scan_rdata_wire = mem[scan_widx[AW-1:0]];
-	wire [31:0] cpu_rdata_wire = mem[cpu_widx];
-
 	always @(posedge clk) begin
-			scan_rdata <= scan_rdata_wire;
+		scan_rdata 	<= mem[scan_widx[AW-1:0]];
+		if (cpu_read) cpu_rdata 	<= mem[cpu_widx];
+		else cpu_rdata <= 32'h0;
 
-			if (cpu_read) cpu_rdata <= cpu_rdata_wire;
-			else cpu_rdata <= 32'h0;
 
-
-			if (cpu_wstrb[0]) mem[cpu_widx][7:0] 		<= cpu_wdata[7:0];
-			if (cpu_wstrb[1]) mem[cpu_widx][15:8] 	<= cpu_wdata[15:8];
-			if (cpu_wstrb[2]) mem[cpu_widx][23:16] 	<= cpu_wdata[23:16];
-			if (cpu_wstrb[3]) mem[cpu_widx][31:24] 	<= cpu_wdata[31:24];
+		if (cpu_wstrb[0]) mem[cpu_widx][7:0] 		<= cpu_wdata[7:0];
+		if (cpu_wstrb[1]) mem[cpu_widx][15:8] 	<= cpu_wdata[15:8];
+		if (cpu_wstrb[2]) mem[cpu_widx][23:16] 	<= cpu_wdata[23:16];
+		if (cpu_wstrb[3]) mem[cpu_widx][31:24] 	<= cpu_wdata[31:24];
 	end
 
 	// assign cpu_rdata = cpu_read ? mem[cpu_widx] : 32'h0;

@@ -57,7 +57,7 @@ module data_mem //#(
 	wire [31:0] vram_rdata;
 	vram vram_inst(
 		.clk(clk),
-		.rstb(rstb),
+		// .rstb(rstb),
 		// CPU side ports
 		.cpu_addr(vram_addr),
 		.cpu_wdata(wdata),

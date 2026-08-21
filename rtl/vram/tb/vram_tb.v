@@ -36,7 +36,7 @@ module vram_tb;
   );
 
   task check32;
-    input [255:0] name;
+    input [511:0] name;
     input [31:0]  got;
     input [31:0]  exp;
     begin
@@ -56,7 +56,7 @@ module vram_tb;
     input [31:0] data;
     input [3:0]  strb;
     begin
-      @(negedge clk);
+      @(negedge clk);		// Set addr and data after a posedge, then wait a whole clock cycle
       cpu_addr = addr; cpu_wdata = data; cpu_wstrb = strb;
       @(posedge clk);
       @(negedge clk);
@@ -68,7 +68,12 @@ module vram_tb;
     input  [31:0] addr;
     output [31:0] data;
     begin
-      cpu_addr = addr; cpu_read = 1'b1; #1; data = cpu_rdata;
+   		@(negedge clk);		// Wait a clock cycle because now reads are synchronous too
+      cpu_addr = addr; cpu_read = 1'b1;
+      @(posedge clk);
+      #1; data = cpu_rdata;
+      @(negedge clk);
+      cpu_read = 1'b0;
     end
   endtask
 
@@ -126,17 +131,17 @@ module vram_tb;
     check32("pixel(1,1)->word40 lane1", v, 32'h0000FF00);
 
     // 6. scanout sees the same array (word0 from step 4)
-    scan_widx = 32'd0; #1;
+    scan_widx = 32'd0; @(posedge clk); #1;
     check32("scan word0 == cpu word0", scan_rdata, 32'hFF0000FF);
 
     // 7. scanout independent of a concurrent CPU write to a different word
     @(negedge clk);
     cpu_addr=32'h00000200; cpu_wdata=32'h12345678; cpu_wstrb=4'b1111; // write word128
     scan_widx=32'd0;                                                   // scan word0
-    #1;
+    @(posedge clk); #1;
     check32("scan word0 during cpu write elsewhere", scan_rdata, 32'hFF0000FF);
     @(posedge clk); @(negedge clk); cpu_wstrb=4'b0000;
-    scan_widx=32'd128; #1;
+    scan_widx=32'd128; @(posedge clk); #1;
     check32("scan sees the just-written word128", scan_rdata, 32'h12345678);
 
     $display("");

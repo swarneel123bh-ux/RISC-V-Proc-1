@@ -16,6 +16,7 @@ module gpu #(
 	parameter PIX_H = 120
 ) (
 	input wire clk,
+	input wire rstb,
 
 	// CPU side ports
 	input wire [31:0] 	cpu_addr,

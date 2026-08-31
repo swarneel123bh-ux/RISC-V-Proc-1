@@ -1,17 +1,17 @@
 `timescale 1ns / 1ps
 
-module data_mem //#(
-  //parameter DEPTH_BYTES = 4096,                       // real allocation (bump as needed)
-  //parameter INIT_FILE   = ""                          // "" = no preload )
-(
+module data_mem #(
+  parameter DEPTH_BYTES = 4096,                       // real allocation (bump as needed)
+  parameter INIT_FILE   = ""                          // "" = no preload )
+)(
 	// Proc side ports
 	input  wire        clk,
   input  wire        rstb,
-  input  wire [31:0] addr,        // byte address
-  input  wire [31:0] wdata,       // write data (right-justified)
-  input  wire [3:0]  wstrb,       // byte-write enables: bit i set means wdata word written from (addr + i) to (addr + i + 3)
-  input  wire        mem_read,    // read enable
-  output wire [31:0] rdata,        // raw 32-bit word at addr (aligned)
+  input  wire [31:0] addr,          // byte address
+  input  wire [31:0] wdata,         // write data (right-justified)
+  input  wire [3:0]  wstrb,         // byte-write enables: bit i set means wdata word written from (addr + i) to (addr + i + 3)
+  input  wire        mem_read,      // read enable
+  output wire  [31:0] rdata,         // raw 32-bit word at addr (aligned)
 
   // Unified memory side ports
   output wire [31:0] umem_addr,
@@ -21,28 +21,19 @@ module data_mem //#(
   input  wire [31:0] umem_rdata
 );
 
-	// Cannot allocate all 4Gigs of memory, use byte-depth to get number of words in the array
-	// localparam WORDS = DEPTH_BYTES/4;
-  // localparam ARRAYWORDS = $clog2(WORDS);
-	// reg [31:0] int_mem [0 : WORDS - 1];
-	// wire [ARRAYWORDS-1:0] widx = addr[ARRAYWORDS+1 : 2];	// Word index
-	// integer i;
-
-	// // If initial memory file given
-	// initial begin
-	// 	if (INIT_FILE != "") begin
-	// 		$readmemh(INIT_FILE, int_mem);
-	// 	end
-	// end
-	//
 	// Base Addresses of the devices
 	localparam VRAMBASE = 32'hFFFE0000;
 	localparam UARTBASE = 32'hFFFF0000;
 
 	// MMIO decode
-	wire is_uart = (addr >= UARTBASE);
-	wire is_vram = ((addr >= VRAMBASE) && (addr < UARTBASE));
-	wire is_ram = ~(is_uart | is_vram);
+	wire is_uart  = (addr >= UARTBASE);
+	wire is_vram  = ((addr >= VRAMBASE) && (addr < UARTBASE));
+	wire is_ram   = ~(is_uart | is_vram);
+
+	reg sel_uart;
+	reg sel_vram;
+	reg sel_ram;
+
 
 	// RAM Path (Umem)
 	assign umem_addr = addr;
@@ -87,9 +78,37 @@ module data_mem //#(
   	.rx_ready(uart_rx_ready)
 	);
 
+	always @(posedge clk or negedge rstb) begin
+	  if (!rstb) begin
+				sel_ram   <= 0;
+				sel_uart  <= 0;
+				sel_vram  <= 0;
+		end else begin
+	    sel_uart  <= is_uart; // <= (addr >= UARTBASE);
+	    sel_vram  <= is_vram; // <= ((addr >= VRAMBASE) && (addr < UARTBASE));
+	    sel_ram   <= is_ram;  // <=  ~(is_uart | is_vram);
+		end
+	end
+
 	// Final output
-	assign rdata = 	is_uart ? uart_rdata :
-									is_vram ? vram_rdata :
-									umem_rdata;
+	assign rdata =
+	sel_uart  ? uart_rdata :
+	sel_vram  ? vram_rdata :
+	sel_ram   ? umem_rdata :
+	32'h0;
+
+	// Swapped version to confirm failure when not registerd
+	// assign rdata =
+	// is_uart  ? uart_rdata :
+	// is_vram  ? vram_rdata :
+	// is_ram   ? umem_rdata :
+	// 32'h0;
+
+	// Swapped version to confirm failure when wrongly registered
+	// assign rdata =
+	// sel_uart  ? vram_rdata :
+	// sel_vram  ? uart_rdata :
+	// sel_ram   ? umem_rdata :
+	// 32'h0;
 
 endmodule

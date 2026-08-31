@@ -24,7 +24,7 @@ module vram #(
 	// reg [31:0] scan_rdata_reg;
 	// reg [31:0] cpu_rdata_reg;
 
-	integer k;
+	// integer k;
 	// initial begin
 	// 	for (k = 0; k < DEPTH_WORDS; k = k + 1) begin
 	// 		mem[k] = 32'h0;

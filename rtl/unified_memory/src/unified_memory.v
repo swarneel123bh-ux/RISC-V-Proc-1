@@ -55,4 +55,11 @@ module unified_memory #(
 	// Assign data_mem reads
 	assign dmem_rdata = dmem_read ? memory[dmem_wordidx] : 32'h0;
 
+	// the dmem port issues a load or a store but never both, and dmem_rdata is
+	// gated on dmem_read, so the only same-cycle read/write collision is the
+	// unconditional imem read against a dmem write to the same word. That needs a
+	// write into the text region. Nothing does that. If a loader or self-modifying
+	// code ever appears, add same-address write-forward rather than a directed test
+	// , because iverilog can only tell you what iverilog does.
+
 endmodule

@@ -31,5 +31,5 @@ SECTIONS {
 
   /* Stack top = top of the 64 KB region. MUST equal unified_memory
      DEPTH_WORDS * 4. Direct constant so no bytes are emitted here. */
-  __stack_top = 0x00010000;
+  __stack_top = 0x00008000;
 }

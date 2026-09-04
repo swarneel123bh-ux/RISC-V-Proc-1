@@ -16,7 +16,11 @@ VCD_DIR := $(BUILD)/vcd
 MODULE  := data_mem
 TB      := $(MODULE)_tb
 SOURCES := $(SRC_DIR)/$(MODULE).v
-DEPS    :=
+UART_DIR := ../uart/src
+DEPS     := $(UART_DIR)/uart_top.v \
+            $(UART_DIR)/uart_tx.v \
+            $(UART_DIR)/uart_rx.v
+INCLUDES := -I$(UART_DIR)
 TBENCH  := $(TB_DIR)/$(TB).v
 OUT  := $(VVP_DIR)/$(TB).vvp
 WAVE := $(VCD_DIR)/$(TB).vcd
@@ -24,7 +28,7 @@ WAVE := $(VCD_DIR)/$(TB).vcd
 all: $(OUT)
 $(OUT): $(SOURCES) $(DEPS) $(TBENCH)
 	@mkdir -p $(VVP_DIR) $(VCD_DIR)
-	$(IVERILOG) $(FLAGS) -o $@ $(SOURCES) $(DEPS) $(TBENCH)
+	$(IVERILOG) $(FLAGS) $(INCLUDES) -o $@ $(SOURCES) $(DEPS) $(TBENCH)
 test: all
 	$(VVP) $(OUT) +dump
 run: all

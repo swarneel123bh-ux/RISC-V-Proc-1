@@ -18,7 +18,11 @@ module data_mem #(
   output wire [31:0] umem_wdata,
   output wire [3:0]  umem_wstrb,
   output wire        umem_read,
-  input  wire [31:0] umem_rdata
+  input  wire [31:0] umem_rdata,
+
+  // Serial input/output (for uart)
+  input wire ser_rx,
+  output wire ser_tx
 );
 
 	// Base Addresses of the devices
@@ -66,17 +70,40 @@ module data_mem #(
 	wire uart_re = is_uart & mem_read;
 	wire [31:0] uart_rdata;
 	wire uart_rx_ready;		// Unused in the uart module but available to expose later
-	uart uartInst(
- 		.clk(clk),
-  	.rst(~rstb),				// UART module was active high
-  	.addr(addr),
-  	.wdata(wdata),
-  	.we(uart_we),
-  	.re(uart_re),
-  	.cs(is_uart),
-  	.rdata(uart_rdata),
-  	.rx_ready(uart_rx_ready)
-	);
+ 	// UART ---------
+  // wire uart_tx_buf_full;
+  // wire uart_tx_buf_empty;
+  // wire uart_rx_buf_full;
+  // wire uart_rx_buf_empty;
+
+  uart_top #(
+    .CLK_FREQ     (27_000_000)
+  ) uartInst_ (
+    .clk(clk),
+    .rstb(rstb),     // Master resetb signal
+    .csb(~is_uart),      // Chip select signal for decode
+
+    // CPU side ports
+    .cpu_addr(addr[3:0]),   // Only 4 bits used when csb is low, to distinguish registers (Word aligned access only)
+    .cpu_write(uart_we),  // Cpu wants to transmit a byte
+    .cpu_read(uart_re),   // Cpu wants to read a byte if there
+    .cpu_wdata(wdata),  // Take 32-bit dat but discard upper 3 bytes
+    .cpu_rdata(uart_rdata),  // Pad to 32 bits (buffered internally) (syncrhonous reads)
+    // output wire [31:0]  cpu_uart_ctrl, // Control register (unused for now)
+
+    // Serial Side ports
+    .ser_rx(ser_rx),
+    .ser_tx(ser_tx)
+
+    // Signal ports (not requried anymore since we have status register ?? )
+    //.tx_buf_full(uart_tx_buf_full),    // Sender must pause, or we overwrite
+    //.tx_buf_empty(uart_tx_buf_empty),   // No remaining bytes to transmit
+    //.rx_buf_full(uart_rx_buf_full),    // Sender must stop sending, or we drop
+    //.rx_buf_empty(uart_rx_buf_empty)   	// No remaining bytes to read
+  );
+ 	// UART ---------
+
+
 
 	always @(posedge clk or negedge rstb) begin
 	  if (!rstb) begin

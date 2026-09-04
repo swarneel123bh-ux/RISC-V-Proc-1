@@ -19,12 +19,10 @@ BUILD   := build
 VVP_DIR := $(BUILD)/vvp
 VCD_DIR := $(BUILD)/vcd
 
-MODULE  := uart
-TB      := $(MODULE)_tb
-
-SOURCES := $(SRC_DIR)/$(MODULE).v
-DEPS    :=
-TBENCH  := $(TB_DIR)/$(TB).v
+MODULE  := uart_top
+TB      := uart_top_tb
+SOURCES := $(SRC_DIR)/uart_top.v $(SRC_DIR)/uart_tx.v $(SRC_DIR)/uart_rx.v
+INCLUDES := -I$(SRC_DIR)
 
 OUT     := $(VVP_DIR)/$(TB).vvp
 WAVE    := $(VCD_DIR)/$(TB).vcd
@@ -43,12 +41,12 @@ $(VPI_LIB): $(VPI_SRC)
 	cd $(BUILD) && $(IVERILOG_VPI) ../$(VPI_SRC) --name=uart_vpi
 
 $(OUT): $(SOURCES) $(DEPS) $(TBENCH)
-	@mkdir -p $(VVP_DIR) $(VCD_DIR)
-	$(IVERILOG) $(FLAGS) -o $@ $(SOURCES) $(DEPS) $(TBENCH)
+  @mkdir -p $(VVP_DIR) $(VCD_DIR)
+  $(IVERILOG) $(FLAGS) -o $@ $(INCLUDES) $(SOURCES) $(DEPS) $(TB)
 
 # uart_tb does an RX read; feed one keypress non-interactively under `test`.
 test: all
-	printf 'X' | $(VVP) $(VPI_RUN) $(OUT)
+  printf 'X' | $(VVP) $(VPI_RUN) $(OUT)
 
 console: all
 	@echo "[uart] interactive VPI console — type input, see output; ends on \$$finish or Ctrl-C"

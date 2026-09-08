@@ -81,6 +81,7 @@ module data_mem #(
   ) uartInst_ (
     .clk(clk),
     .rstb(rstb),     // Master resetb signal
+    // .csb(is_uart),  // MUTATION TEST 1
     .csb(~is_uart),      // Chip select signal for decode
 
     // CPU side ports

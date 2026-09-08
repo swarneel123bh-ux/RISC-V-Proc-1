@@ -13,12 +13,16 @@ module instruction_mem //#(
 	// Processor side ports
 	input  wire        clk,
   input  wire [31:0] addr,
+  input   wire      imem_en,
   output wire [31:0] instr,
 
   // Unified Memory side ports
   output wire [31:0] umem_addr,
+  output wire        umem_imem_en,
   input wire 	[31:0] umem_rdata
 );
+
+  assign umem_imem_en = imem_en;
 
 	// Simple pass through, later will cache (meaning imem will also have its own memory)
 	assign umem_addr = addr;

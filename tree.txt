@@ -1,0 +1,240 @@
+.
+├── HANDOFF.md
+├── HANDOFF_2026-08-31_12-43-06.md
+├── HANDOFF_2026-09-04_18-56-20.md
+├── Makefile
+├── README.md
+├── changes.patch
+├── rtl
+│   ├── add4
+│   │   ├── add4.mk
+│   │   ├── src
+│   │   │   └── add4.v
+│   │   └── tb
+│   │       └── add4_tb.v
+│   ├── alu
+│   │   ├── alu.mk
+│   │   ├── src
+│   │   │   └── alu.v
+│   │   └── tb
+│   │       └── alu_tb.v
+│   ├── alu_control
+│   │   ├── alu_control.mk
+│   │   ├── src
+│   │   │   └── alu_control.v
+│   │   └── tb
+│   │       └── alu_control_tb.v
+│   ├── branch_predictor
+│   │   ├── branch_predictor.mk
+│   │   ├── src
+│   │   │   └── branch_predictor.v
+│   │   └── tb
+│   │       └── branch_predictor_tb.v
+│   ├── branch_unit
+│   │   ├── branch_unit.mk
+│   │   ├── src
+│   │   │   └── branch_unit.v
+│   │   └── tb
+│   │       └── branch_unit_tb.v
+│   ├── create_module.py
+│   ├── cu
+│   │   ├── cu.mk
+│   │   ├── src
+│   │   │   └── cu.v
+│   │   └── tb
+│   │       └── cu_tb.v
+│   ├── data_mem
+│   │   ├── build
+│   │   │   ├── vcd
+│   │   │   │   └── data_mem_tb.vcd
+│   │   │   └── vvp
+│   │   │       └── data_mem_tb.vvp
+│   │   ├── data_mem.mk
+│   │   ├── src
+│   │   │   └── data_mem.v
+│   │   └── tb
+│   │       └── data_mem_tb.v
+│   ├── forwarding_unit
+│   │   ├── forwarding_unit.mk
+│   │   ├── src
+│   │   │   └── forwarding_unit.v
+│   │   └── tb
+│   │       └── forwarding_unit_tb.v
+│   ├── gpu
+│   │   ├── gpu.mk
+│   │   ├── src
+│   │   │   └── gpu.v
+│   │   └── tb
+│   │       └── gpu_tb.v
+│   ├── hazard_detection_unit
+│   │   ├── hazard_detection_unit.mk
+│   │   ├── src
+│   │   │   └── hazard_detection_unit.v
+│   │   └── tb
+│   │       └── hazard_detection_unit_tb.v
+│   ├── immdataext
+│   │   ├── immdataext.mk
+│   │   ├── src
+│   │   │   └── immdataext.v
+│   │   └── tb
+│   │       └── immdataext_tb.v
+│   ├── instruction_mem
+│   │   ├── instruction_mem.mk
+│   │   ├── src
+│   │   │   ├── imem_params.vh
+│   │   │   └── instruction_mem.v
+│   │   └── tb
+│   │       └── instruction_mem_tb.v
+│   ├── mem_wrapper
+│   │   ├── mem_wrapper.mk
+│   │   ├── src
+│   │   │   └── mem_wrapper.v
+│   │   └── tb
+│   │       └── mem_wrapper_tb.v
+│   ├── mux2x1_32
+│   │   ├── mux2x1_32.mk
+│   │   ├── src
+│   │   │   └── mux2x1_32.v
+│   │   └── tb
+│   │       └── mux2x1_32_tb.v
+│   ├── proc
+│   │   ├── build
+│   │   │   ├── uart_vpi.o
+│   │   │   ├── uart_vpi.vpi
+│   │   │   ├── vcd
+│   │   │   │   └── proc_tb.vcd
+│   │   │   └── vvp
+│   │   │       └── proc_tb.vvp
+│   │   ├── proc.mk
+│   │   ├── src
+│   │   │   ├── imem_params.vh
+│   │   │   └── proc.v
+│   │   └── tb
+│   │       └── proc_tb.v
+│   ├── program_counter
+│   │   ├── program_counter.mk
+│   │   ├── src
+│   │   │   └── program_counter.v
+│   │   └── tb
+│   │       └── program_counter_tb.v
+│   ├── regfile
+│   │   ├── regfile.mk
+│   │   ├── src
+│   │   │   └── regfile.v
+│   │   └── tb
+│   │       └── regfile_tb.v
+│   ├── uart
+│   │   ├── src
+│   │   │   ├── top_params.vh
+│   │   │   ├── uart.v
+│   │   │   ├── uart_rx.v
+│   │   │   ├── uart_top.v
+│   │   │   └── uart_tx.v
+│   │   ├── tb
+│   │   │   └── uart_tb.v
+│   │   ├── uart.mk
+│   │   └── vpi
+│   │       └── uart_vpi.c
+│   ├── unified_memory
+│   │   ├── src
+│   │   │   └── unified_memory.v
+│   │   ├── tb
+│   │   │   └── unified_memory_tb.v
+│   │   └── unified_memory.mk
+│   └── vram
+│       ├── build
+│       │   ├── vcd
+│       │   └── vvp
+│       │       └── vram_tb.vvp
+│       ├── src
+│       │   └── vram.v
+│       ├── tb
+│       │   └── vram_tb.v
+│       ├── vpi
+│       │   └── gpu_vpi.c
+│       └── vram.mk
+├── sim
+│   ├── build
+│   │   ├── gpu_vpi.o
+│   │   ├── gpu_vpi.vpi
+│   │   ├── sdl_screen
+│   │   ├── uart_vpi.o
+│   │   ├── uart_vpi.vpi
+│   │   ├── vcd
+│   │   └── vvp
+│   │       └── sim_tb.vvp
+│   ├── sim.mk
+│   ├── src
+│   │   ├── sdl_screen.c
+│   │   └── sim_tb.v
+│   └── tb
+├── software
+│   ├── README.md
+│   ├── addi.bin
+│   ├── addi.elf
+│   ├── addi_test.bin
+│   ├── addi_test.elf
+│   ├── addi_test.s
+│   ├── auipc.bin
+│   ├── auipc.elf
+│   ├── auipc_test.s
+│   ├── branchPredictor_test.bin
+│   ├── branchPredictor_test.c
+│   ├── branchPredictor_test.elf
+│   ├── bss_test.bin
+│   ├── bss_test.c
+│   ├── bss_test.elf
+│   ├── c_bubblesort.bin
+│   ├── c_bubblesort.c
+│   ├── c_bubblesort.elf
+│   ├── crt0.s
+│   ├── ctest1.bin
+│   ├── ctest1.c
+│   ├── ctest1.elf
+│   ├── imem_depth.py
+│   ├── jbtype_test.bin
+│   ├── jbtype_test.elf
+│   ├── jbtype_test.s
+│   ├── kbd_test.bin
+│   ├── kbd_test.c
+│   ├── kbd_test.elf
+│   ├── link.ld
+│   ├── loaduse_test.bin
+│   ├── loaduse_test.elf
+│   ├── loaduse_test.s
+│   ├── lui_test.bin
+│   ├── lui_test.elf
+│   ├── lui_test.s
+│   ├── memtest.bin
+│   ├── memtest.elf
+│   ├── memtest.s
+│   ├── pong.bin
+│   ├── pong.c
+│   ├── pong.elf
+│   ├── rom
+│   │   ├── program.hex
+│   │   └── umem_test.hex
+│   ├── subword_test.bin
+│   ├── subword_test.elf
+│   ├── subword_test.s
+│   ├── test.bin
+│   ├── test.c
+│   ├── test.elf
+│   ├── u_i_r_type_test.bin
+│   ├── u_i_r_type_test.elf
+│   ├── u_i_r_type_test.s
+│   ├── uart_echo_loop.bin
+│   ├── uart_echo_loop.elf
+│   ├── uart_echo_loop.s
+│   ├── uart_echo_test.bin
+│   ├── uart_echo_test.elf
+│   ├── uart_echo_test.s
+│   ├── uart_test.bin
+│   ├── uart_test.elf
+│   ├── uart_test.s
+│   ├── vram_test1.bin
+│   ├── vram_test1.c
+│   └── vram_test1.elf
+└── tree.txt
+
+81 directories, 157 files

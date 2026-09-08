@@ -37,7 +37,9 @@ SOURCES := \
   $(RTL)/alu/src/alu.v \
   $(RTL)/alu_control/src/alu_control.v \
   $(RTL)/data_mem/src/data_mem.v \
-  $(RTL)/uart/src/uart.v \
+  $(RTL)/uart/src/uart_rx.v \
+  $(RTL)/uart/src/uart_tx.v \
+  $(RTL)/uart/src/uart_top.v \
   $(RTL)/branch_unit/src/branch_unit.v \
   $(RTL)/forwarding_unit/src/forwarding_unit.v \
   $(RTL)/hazard_detection_unit/src/hazard_detection_unit.v \
@@ -49,6 +51,7 @@ SOURCES := \
 OUT     := $(VVP_DIR)/$(TB).vvp
 ROM     := ../software/rom/program.hex
 HEXPATH := ../software/rom/program.hex
+INCLUDE_PATHS := -I$(RTL)/uart/src
 
 VPI_SRC := $(RTL)/uart/vpi/uart_vpi.c
 VPI_LIB := $(BUILD)/uart_vpi.vpi
@@ -68,7 +71,7 @@ $(GPU_VPI_LIB): $(GPU_VPI_SRC)
 
 $(OUT): $(SOURCES) $(TBENCH) $(ROM)
 	@mkdir -p $(VVP_DIR) $(VCD_DIR)
-	$(IVERILOG) $(FLAGS) -DUMEM_HEXFILE='"$(HEXPATH)"' -o $@ $(SOURCES) $(TBENCH)
+	$(IVERILOG) $(FLAGS) $(INCLUDE_PATHS) -DUMEM_HEXFILE='"$(HEXPATH)"' -o $@ $(SOURCES) $(TBENCH)
 
 console: all
 	$(VVP) $(VPI_RUN) $(OUT)

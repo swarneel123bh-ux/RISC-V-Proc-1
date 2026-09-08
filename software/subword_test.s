@@ -1,7 +1,7 @@
 .section .text
 .globl _start
 _start:
-    addi x2, x0, 0x40          # x2 = base 0x40
+    addi x2, x0, 0x400          # x2 = base 0x400
     addi x1, x0, 0x123         # x1 = 0x00000123
     sw   x1, 0(x2)             # mem[0x40] = 00 00 01 23  (bytes: 23 01 00 00 LE)
 
@@ -29,3 +29,6 @@ _start:
     sw   x0, 20(x2)           # mem[0x54] = 00000000
     sh   x1, 22(x2)           # store low half of x1 (0x0123) into high half of 0x54
     lw   x13, 20(x2)          # x13 = 0x01230000
+
+    lh   x14, 10(x2)          # high half of 0x408 = 0xFFFF -> expect 0xFFFFFFFF
+    lh   x15, 0(x2)           # low half of 0x400  = 0x0123 -> expect 0x00000123

@@ -52,7 +52,8 @@ module proc(
     .sel(pcInMuxSel),
     .out(pcin_)
   );
-  assign pcin = hdu_stall ? pcout : pcin_;
+  wire hold = hdu_stall & ~pcInMuxSel;
+  assign pcin = hold ? pcout : pcin_;
   program_counter pc(
   	.rstb(rstb),
    	.clk(clk),
@@ -65,20 +66,24 @@ module proc(
   );
   wire [31:0] instructionmeminstr;
   wire [31:0] imem_um_addr, imem_um_rdata;
+  wire imem_umem_en;
   instruction_mem instructionmem(
   	.clk(clk),
    	.addr(pcout),
     .instr(instructionmeminstr),
+    .imem_en(~hold),
     .umem_addr(imem_um_addr),
-    .umem_rdata(imem_um_rdata)
+    .umem_rdata(imem_um_rdata),
+    .umem_imem_en(imem_umem_en)
   );
 
   // IF/ID pipeline register
   reg [31:0] ifid_pc;
   reg [31:0] ifid_pcPlus4;
-  reg [31:0] ifid_instr;
+  //reg [31:0] ifid_instr;
   reg ifid_branchPredictor_predict_taken;
   reg [31:0] ifid_branchPredictor_predict_target;
+  reg ifid_flush;
 
   // ID Stage Stuff
   //
@@ -89,15 +94,15 @@ module proc(
   // rs2 (5 bit): specifies second register operand
   // rd (5 bit):: destination register specifies register which will receive result of computation
   // These fields are replaced as imediate values when the opcode requires it to be
-  wire [6:0] id_opcode = ifid_instr[6:0];
-  wire [4:0] id_rd = ifid_instr[11:7];
-  wire [4:0] id_rs1 = ifid_instr[19:15];
-  wire [4:0] id_rs2 = ifid_instr[24:20];
-  wire [6:0] id_funct7 = ifid_instr[31:25];
-  wire [2:0] id_funct3 = ifid_instr[14:12];
+  wire [6:0] id_opcode = (pcInMuxSel | ifid_flush | !rstb) ? 7'h13 : instructionmeminstr[6:0];
+  wire [4:0] id_rd     = (pcInMuxSel | ifid_flush | !rstb) ? 0     : instructionmeminstr[11:7];
+  wire [4:0] id_rs1    = (pcInMuxSel | ifid_flush | !rstb) ? 0     : instructionmeminstr[19:15];
+  wire [4:0] id_rs2    = (pcInMuxSel | ifid_flush | !rstb) ? 0     : instructionmeminstr[24:20];
+  wire [6:0] id_funct7 = (pcInMuxSel | ifid_flush | !rstb) ? 0     : instructionmeminstr[31:25];
+  wire [2:0] id_funct3 = (pcInMuxSel | ifid_flush | !rstb) ? 0     : instructionmeminstr[14:12];
   wire [31:0]	id_immdata;
   immdataext immdataextractor(
-  	.ifid_instr(ifid_instr),
+  	.ifid_instr(instructionmeminstr),
    	.immdata(id_immdata)
   );
   // immediate + control decode also live here (combinational)
@@ -235,11 +240,11 @@ module proc(
   wire [31:0] jalrDestination = (fwd_rdata1 + idex_immdata) & ~32'b1;		// Only for JALR (last bit needs reset)
   assign pcBranchTarget = idex_cu_jalr ? jalrDestination : branchDestination;
   assign actualTaken = (idex_cu_branch & branchUnit_take) | idex_cu_jump | idex_cu_jalr;	// Actual Branch signal
-  //wire is_ctrl = idex_cu_branch | idex_cu_jalr | idex_cu_jump;
+  wire is_ctrl = idex_cu_branch | idex_cu_jalr | idex_cu_jump;
   wire branchUnit_mispredict =
-  	(/*is_ctrl	&*/ (actualTaken != idex_branchPredictor_predict_taken)) |
-   	//(~is_ctrl & idex_branchPredictor_predict_taken) |
-  	(/*is_ctrl &*/ (actualTaken & (pcBranchTarget != idex_branchPredictor_predict_target)));	// Check if actual signal is same as predicted signal
+  	(is_ctrl	& (actualTaken != idex_branchPredictor_predict_taken)) |
+   	(~is_ctrl & idex_branchPredictor_predict_taken) |
+  	(is_ctrl & (actualTaken & (pcBranchTarget != idex_branchPredictor_predict_target)));	// Check if actual signal is same as predicted signal
   assign pcInMuxSel = branchUnit_mispredict;
 
   // EX/MEM Pipeline register
@@ -258,14 +263,27 @@ module proc(
   wire [31:0] memwrap_store_out;
   wire [31:0] memwrap_load_out;
   wire [31:0] dataMem_rdata;
-  mem_wrapper memWrapper(
+  mem_wrapper memWrapper_stores(    // FOR STORES
   .funct3(exmem_funct3),      			// size + signedness (from the instruction)
   .addr_lo(exmem_alu_out[1:0]),     // addr[1:0] — byte offset within the word
   .store_data(exmem_rdata2),  			// rs2 value to store (right-justified)
-  .load_word(dataMem_rdata),   			// raw 32-bit word from data_mem
+  .load_word(32'h0),   			        // raw 32-bit word from data_mem
   .mem_write(exmem_cu_mem_write),   // is this a store?
   .wstrb(memwrap_wstrb),       			// byte-write enables -> data_mem
-  .store_out(memwrap_store_out),   	// byte-shifted store data -> data_mem wdata
+  .store_out(memwrap_store_out)   	// byte-shifted store data -> data_mem wdata
+  //.load_out(memwrap_load_out)     // extracted + extended load result -> WB
+  );
+
+  reg [2:0] memwb_funct3; // NEed these defined here
+  reg [1:0] memwb_addr_lo;
+  mem_wrapper memWrapper_loads(     // FOR LOADS
+  .funct3(memwb_funct3),      			// size + signedness (from the instruction)
+  .addr_lo(memwb_addr_lo),          // addr[1:0] — byte offset within the word
+  .store_data(exmem_rdata2),  			// rs2 value to store (right-justified)
+  .load_word(dataMem_rdata),   			// raw 32-bit word from data_mem
+  .mem_write(1'b0),                 // is this a store?
+  //.wstrb(memwrap_wstrb),       	  // byte-write enables -> data_mem
+  //.store_out(memwrap_store_out),  // byte-shifted store data -> data_mem wdata
   .load_out(memwrap_load_out)     	// extracted + extended load result -> WB
   );
 
@@ -297,6 +315,7 @@ module proc(
    	// Instruction side ports, read-only, async
    	.imem_addr(imem_um_addr),
    	.imem_rdata(imem_um_rdata),
+    .imem_en(imem_umem_en),
 
     // Data side ports, async read + sync byte-strobed write
     .dmem_addr(dmem_um_addr),
@@ -310,14 +329,14 @@ module proc(
   reg [31:0] memwb_pcPlus4;
   reg [1:0] memwb_cu_wb_sel;
   reg [31:0] memwb_alu_out;
-  reg [31:0] memwb_dataMem_rdata;
+  // reg [31:0] memwb_dataMem_rdata;
 
   // WB Stage Stuff
   always @(*) begin
   	wb_mux = memwb_alu_out;
  		case (memwb_cu_wb_sel)
    		2'b00: wb_mux = memwb_alu_out;				// ALU Result
-     	2'b01: wb_mux = memwb_dataMem_rdata;	// Data Memory Read Result
+     	2'b01: wb_mux = memwrap_load_out;	    // Memory Read Result
       2'b10: wb_mux = memwb_pcPlus4;				// PC+4 for JAL/JALR
   	endcase
   end
@@ -341,11 +360,12 @@ module proc(
 	    branch_count     <= 0;
 	    mispredict_count <= 0;
 
-     	ifid_instr 	<= 0;
+     	//ifid_instr 	<= 0;
      	ifid_pc 		<= 0;
      	ifid_pcPlus4 <= 0;
       ifid_branchPredictor_predict_taken <= 0;
       ifid_branchPredictor_predict_target <= 0;
+      ifid_flush <= 0;
 
 
       idex_pc <= 0;
@@ -388,12 +408,15 @@ module proc(
       memwb_cu_reg_write <= 0;
       memwb_cu_wb_sel <= 0;
       memwb_alu_out <= 0;
-      memwb_dataMem_rdata <= 0;
+      // memwb_dataMem_rdata <= 0;
+      memwb_funct3 <= 0;
+      memwb_addr_lo <= 0;
       memwb_rd <= 0;
 
    	end else begin
     	// Branch predictor diagnostics upate
 	    cyc_count <= cyc_count + 1;
+			ifid_flush <= pcInMuxSel;
 	    if (idex_cu_branch | idex_cu_jump | idex_cu_jalr) begin
 	      branch_count <= branch_count + 1;
 	      if (branchUnit_mispredict) mispredict_count <= mispredict_count + 1;
@@ -402,7 +425,7 @@ module proc(
     	if (pcInMuxSel) begin	// PC will change to 1 now, need to flush last pipeline (two nops => need to flush IF and ID)
     		ifid_pc 			<= 0;
      		ifid_pcPlus4 	<= 0;
-     		ifid_instr 		<= 32'h00000013;	// Decodes to NOP, better than just 0;
+     		//ifid_instr 		<= 32'h00000013;	// Decodes to NOP, better than just 0;
        	ifid_branchPredictor_predict_taken <= 0;
         ifid_branchPredictor_predict_target <= 0;
 
@@ -432,7 +455,7 @@ module proc(
      		// FREEZE IFID, BUBBLE IDEX
      		ifid_pc 			<= ifid_pc;
        	ifid_pcPlus4 	<= ifid_pcPlus4;
-      	ifid_instr 		<= ifid_instr;
+      	//ifid_instr 		<= ifid_instr;
       	ifid_branchPredictor_predict_taken <= ifid_branchPredictor_predict_taken;
        	ifid_branchPredictor_predict_target <= ifid_branchPredictor_predict_target;
 
@@ -461,7 +484,7 @@ module proc(
      	end else begin
     		ifid_pc <= pcout;
      		ifid_pcPlus4 <= pcadd4out;
-     		ifid_instr <= instructionmeminstr;
+     		//ifid_instr <= instructionmeminstr;
        	ifid_branchPredictor_predict_taken <= branchPredictor_predict_taken;
        	ifid_branchPredictor_predict_target <= branchPredictor_predict_target;
 
@@ -506,7 +529,9 @@ module proc(
       memwb_cu_reg_write <= exmem_cu_reg_write;
       memwb_cu_wb_sel <= exmem_cu_wb_sel;
       memwb_alu_out <= exmem_alu_out;
-      memwb_dataMem_rdata <= memwrap_load_out;
+      //memwb_dataMem_rdata <= memwrap_load_out;
+      memwb_funct3 <= exmem_funct3;
+      memwb_addr_lo <= exmem_alu_out[1:0];
       memwb_rd <= exmem_rd;
     end
   end

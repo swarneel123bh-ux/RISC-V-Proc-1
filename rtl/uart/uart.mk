@@ -41,12 +41,12 @@ $(VPI_LIB): $(VPI_SRC)
 	cd $(BUILD) && $(IVERILOG_VPI) ../$(VPI_SRC) --name=uart_vpi
 
 $(OUT): $(SOURCES) $(DEPS) $(TBENCH)
-  @mkdir -p $(VVP_DIR) $(VCD_DIR)
-  $(IVERILOG) $(FLAGS) -o $@ $(INCLUDES) $(SOURCES) $(DEPS) $(TB)
+	@mkdir -p $(VVP_DIR) $(VCD_DIR)
+	$(IVERILOG) $(FLAGS) -o $@ $(INCLUDES) $(SOURCES) $(DEPS) $(TB)
 
 # uart_tb does an RX read; feed one keypress non-interactively under `test`.
 test: all
-  printf 'X' | $(VVP) $(VPI_RUN) $(OUT)
+	printf 'X' | $(VVP) $(VPI_RUN) $(OUT)
 
 console: all
 	@echo "[uart] interactive VPI console — type input, see output; ends on \$$finish or Ctrl-C"

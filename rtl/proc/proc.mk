@@ -41,11 +41,16 @@ DEPS := $(wildcard \
 	../forwarding_unit/src/forwarding_unit.v \
 	../hazard_detection_unit/src/hazard_detection_unit.v \
 	../mem_wrapper/src/mem_wrapper.v \
-	../uart/src/uart.v \
+	../uart/src/uart_top.v \
+	../uart/src/uart_rx.v \
+	../uart/src/uart_tx.v \
 	../unified_memory/src/unified_memory.v \
 	../vram/src/vram.v \
 	../branch_predictor/src/branch_predictor.v)
 TBENCH  := $(TB_DIR)/$(TB).v
+INCLUDE_PATHS :=  -I../instruction_mem/src \
+                  -I../uart/src
+
 
 OUT  := $(VVP_DIR)/$(TB).vvp
 WAVE := $(VCD_DIR)/$(TB).vcd
@@ -60,7 +65,7 @@ $(VPI_LIB): $(VPI_SRC)
 $(OUT): $(SOURCES) $(DEPS) $(TBENCH)
 	python3 ../../software/imem_depth.py ../../software/rom/program.hex --pow2 --out ../instruction_mem/src/imem_params.vh
 	@mkdir -p $(VVP_DIR) $(VCD_DIR)
-	$(IVERILOG) $(FLAGS) -I../instruction_mem/src -o $@ $(SOURCES) $(DEPS) $(TBENCH)
+	$(IVERILOG) $(FLAGS) $(INCLUDE_PATHS) -o $@ $(SOURCES) $(DEPS) $(TBENCH)
 
 test: all
 	@mkdir -p $(VCD_DIR)

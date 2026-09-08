@@ -1,3 +1,4 @@
+
 `timescale 1ns / 1ps
 
 `ifndef UMEM_HEXFILE
@@ -5,21 +6,23 @@
 `endif
 
 module unified_memory #(
-	parameter DEPTH_WORDS = 16384,
+	parameter DEPTH_WORDS = 8192,
 	parameter HEXFILE = `UMEM_HEXFILE
 )(
 	input  wire        clk,
 
   // Instruction side ports, read-only, async
-  input  wire [31:0] imem_addr,
-  output wire [31:0] imem_rdata,
+  input  wire [31:0]  imem_addr,
+  input  wire         imem_en,
+  output reg [31:0]   imem_rdata,
 
   // Data side ports, async read + sync byte-strobed write
   input  wire [31:0] dmem_addr,
   input  wire [31:0] dmem_wdata,
   input  wire [3:0]  dmem_wstrb,
   input  wire        dmem_read,
-  output wire [31:0] dmem_rdata
+  output reg [31:0] dmem_rdata
+//   output wire [7:0]  dmem_vram_data
 );
 
 	localparam ADDRWIDTHS = $clog2(DEPTH_WORDS);
@@ -31,9 +34,9 @@ module unified_memory #(
 	// But we dont have a disk yet, so we do that work using this snippet
 	integer k;
 	initial begin
-		for (k = 0; k < DEPTH_WORDS; k = k + 1) begin
-			memory[k] = 32'h0;
-		end
+		//for (k = 0; k < DEPTH_WORDS; k = k + 1) begin
+		//	memory[k] = 32'h0;
+		//end
 		$readmemh(HEXFILE, memory);
 	end
 
@@ -42,10 +45,14 @@ module unified_memory #(
 	wire [ADDRWIDTHS-1:0] dmem_wordidx  = dmem_addr[ADDRWIDTHS+1 : 2];
 
 	// Assign the full word,
-	assign imem_rdata = memory[imem_wordidx];
+// 	assign imem_rdata = memory[imem_wordidx];
 
 	// Handle data_mem.v-writes work here
 	always @(posedge clk) begin
+	      if (imem_en) imem_rdata <= memory[imem_wordidx];
+        //imem_rdata <= (imem_en) ? memory[imem_wordidx] : 32'h0;
+        dmem_rdata <= dmem_read ? memory[dmem_wordidx] : 32'h0;
+
 		if (dmem_wstrb[0]) memory[dmem_wordidx][7:0] 		<= dmem_wdata[7:0];
 		if (dmem_wstrb[1]) memory[dmem_wordidx][15:8] 	<= dmem_wdata[15:8] ;
 		if (dmem_wstrb[2]) memory[dmem_wordidx][23:16] 	<= dmem_wdata[23:16];
@@ -53,13 +60,6 @@ module unified_memory #(
 	end
 
 	// Assign data_mem reads
-	assign dmem_rdata = dmem_read ? memory[dmem_wordidx] : 32'h0;
-
-	// the dmem port issues a load or a store but never both, and dmem_rdata is
-	// gated on dmem_read, so the only same-cycle read/write collision is the
-	// unconditional imem read against a dmem write to the same word. That needs a
-	// write into the text region. Nothing does that. If a loader or self-modifying
-	// code ever appears, add same-address write-forward rather than a directed test
-	// , because iverilog can only tell you what iverilog does.
+	// assign dmem_rdata = dmem_read ? memory[dmem_wordidx] : 32'h0;
 
 endmodule

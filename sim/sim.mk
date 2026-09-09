@@ -46,7 +46,8 @@ SOURCES := \
   $(RTL)/mem_wrapper/src/mem_wrapper.v \
   $(RTL)/unified_memory/src/unified_memory.v \
   $(RTL)/vram/src/vram.v \
-  $(RTL)/branch_predictor/src/branch_predictor.v
+  $(RTL)/branch_predictor/src/branch_predictor.v \
+  $(RTL)/uart/tb/uart_host.v
 
 OUT     := $(VVP_DIR)/$(TB).vvp
 ROM     := ../software/rom/program.hex

@@ -47,6 +47,30 @@ static PLI_INT32 uart_rx_calltf(PLI_BYTE8 *user_data) {
   return 0;
 }
 
+// $uart_tx_write(<byte>) -- host-side console output.
+// The testbench pops a byte out of the host uart_top's RX FIFO and hands it
+// here; this is the only thing that reaches the user's terminal.
+static PLI_INT32 uart_tx_calltf(PLI_BYTE8 *user_data) {
+  (void)user_data;
+
+  vpiHandle sys  = vpi_handle(vpiSysTfCall, NULL);
+  vpiHandle args = vpi_iterate(vpiArgument, sys);
+  if (!args) return 0;
+
+  vpiHandle arg = vpi_scan(args);
+  if (!arg) return 0;
+
+  s_vpi_value val;
+  val.format = vpiIntVal;
+  vpi_get_value(arg, &val);
+  vpi_free_object(args);
+
+  putchar((int)(val.value.integer & 0xFF));
+  fflush(stdout);
+
+  return 0;
+}
+
 static void uart_vpi_register(void) {
   s_vpi_systf_data tf;
 
@@ -63,6 +87,11 @@ static void uart_vpi_register(void) {
   tf.sysfunctype = vpiIntFunc;
   tf.tfname      = "$uart_rx_read";
   tf.calltf      = uart_rx_calltf;
+  vpi_register_systf(&tf);
+
+  tf.type    = vpiSysTask;
+  tf.tfname  = "$uart_tx_write";
+  tf.calltf  = uart_tx_calltf;
   vpi_register_systf(&tf);
 }
 

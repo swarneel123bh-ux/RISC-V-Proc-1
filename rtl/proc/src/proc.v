@@ -1,7 +1,9 @@
 `timescale 1ns / 1ps
 
 module proc(
-	input wire rstb	// Active low reset
+	input wire 	rstb,		// Active low reset
+	input wire 	ser_rx,	// uart_rx pin
+	output wire ser_tx  // uart_tx pin
 );
 
 	// Master clock
@@ -305,7 +307,9 @@ module proc(
   	.umem_wdata(dmem_um_wdata),
   	.umem_wstrb(dmem_um_wstrb),
   	.umem_read(dmem_um_read),
-  	.umem_rdata(dmem_um_rdata)
+  	.umem_rdata(dmem_um_rdata),
+   	.ser_rx(ser_rx),
+  	.ser_tx(ser_tx)
    );
 
   // Unified Memory

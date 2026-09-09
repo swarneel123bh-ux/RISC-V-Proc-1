@@ -46,7 +46,8 @@ DEPS := $(wildcard \
 	../uart/src/uart_tx.v \
 	../unified_memory/src/unified_memory.v \
 	../vram/src/vram.v \
-	../branch_predictor/src/branch_predictor.v)
+	../branch_predictor/src/branch_predictor.v \
+	../uart/tb/uart_host.v)
 TBENCH  := $(TB_DIR)/$(TB).v
 INCLUDE_PATHS :=  -I../instruction_mem/src \
                   -I../uart/src

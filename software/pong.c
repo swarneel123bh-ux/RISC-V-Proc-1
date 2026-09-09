@@ -15,9 +15,23 @@
 // object is erased at its old position and redrawn at the new one, so a
 // frame costs a few hundred stores.
 
+// UART OFFSETS
+// #include <stdio.h>
 #define UART_TX     (*(volatile unsigned int *)0xFFFF0000)
 #define UART_RX     (*(volatile unsigned int *)0xFFFF0004)
 #define UART_STATUS (*(volatile unsigned int *)0xFFFF0008)
+#define UART_CTL 		(*(volatile unsigned int *)0xFFFF000C)
+
+// UART STATUS BIT OFFSETS MACROS
+#define UART_ST_RX_BUF_EMPTY  0x00000001  // status_reg[0]
+#define UART_ST_RX_BUF_FULL   0x00000002  // status_reg[1]
+#define UART_ST_TX_BUF_EMPTY  0x00000004  // status_reg[2]
+#define UART_ST_TX_BUF_FULL   0x00000008  // status_reg[3]
+#define UART_ST_RX_FRM_ERROR  0x00000010  // status_reg[4]
+#define UART_ST_IRQ_ENABLE    0x00000020  // status_reg[5]
+#define UART_ST_RX_RESERVED   0x00000040  // status_reg[6]
+#define UART_ST_RX_OVERRUN    0x00000080  // status_reg[7]
+
 #define RX_READY    0x2
 
 #define VRAM_B ((volatile unsigned char *)0xFFFE0000)
@@ -41,14 +55,18 @@
 #define FRAME_DELAY 200
 
 // ---------------------------------------------------------------- UART -----
-void putchar(char c) { UART_TX = (unsigned int)c; }
+void putchar(char c) {
+	while (UART_STATUS & UART_ST_TX_BUF_FULL) ;;	// Spin wait till buffer is not full
+	UART_TX = (unsigned int)c;
+}
 
 void putstr(const char *s) { while (*s) putchar(*s++); }
 
 // non-blocking: returns 0 when no key is waiting
 char getkey(void) {
-  if (UART_STATUS & RX_READY) return (char)(UART_RX & 0xFF);
-  return 0;
+	//putchar(UART_RX & 0xFF);
+  if (UART_STATUS & UART_ST_RX_BUF_EMPTY) return 0;
+  return (char)(UART_RX & 0xFF);
 }
 
 void putdec(int v) {
@@ -134,6 +152,19 @@ int main(void) {
 	  static int hold_lu = 0, hold_ld = 0, hold_ru = 0, hold_rd = 0;
 	  char k;
 	  while ((k = getkey()) != 0) {
+
+				// switch (k) {
+				// 	case 'w':
+				// 	case 'W': pad_l -= PAD_STEP; break;
+				// 	case 's':
+				// 	case 'S': pad_l += PAD_STEP; break;
+				// 	case 'o':
+				// 	case 'O': pad_r -= PAD_STEP; break;
+				// 	case 'l':
+				// 	case 'L': pad_r += PAD_STEP; break;
+				// 	default: putstr("Unknown key: "); putdec(k); putchar('\n'); break;
+				// }
+
 	    switch (k) {
 	      case 0x11: hold_lu = 1; break;
 	      case 0x21: hold_lu = 0; break;
@@ -144,13 +175,17 @@ int main(void) {
 	      case 0x14: hold_rd = 1; break;
 	      case 0x24: hold_rd = 0; break;
 	      case 'q':  running  = 0; break;
-	      default: break;
+	      default: putstr("Unknown key "); break;
 	    }
 	  }
 	  if (hold_lu) pad_l -= PAD_STEP;
 	  if (hold_ld) pad_l += PAD_STEP;
 	  if (hold_ru) pad_r -= PAD_STEP;
 	  if (hold_rd) pad_r += PAD_STEP;
+		// if (pad_l < 0) pad_l = 0;
+		// if (pad_l > SCR_H - PAD_H) pad_l = SCR_H - PAD_H;
+		// if (pad_r < 0) pad_r = 0;
+		// if (pad_r > SCR_H - PAD_H) pad_r = SCR_H - PAD_H;
 
     // ---- ball physics ----
     bx += dx;

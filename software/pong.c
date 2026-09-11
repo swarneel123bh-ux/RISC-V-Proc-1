@@ -182,10 +182,10 @@ int main(void) {
 	  if (hold_ld) pad_l += PAD_STEP;
 	  if (hold_ru) pad_r -= PAD_STEP;
 	  if (hold_rd) pad_r += PAD_STEP;
-		// if (pad_l < 0) pad_l = 0;
-		// if (pad_l > SCR_H - PAD_H) pad_l = SCR_H - PAD_H;
-		// if (pad_r < 0) pad_r = 0;
-		// if (pad_r > SCR_H - PAD_H) pad_r = SCR_H - PAD_H;
+		if (pad_l < 0) pad_l = 0;
+		if (pad_l > SCR_H - PAD_H) pad_l = SCR_H - PAD_H;
+		if (pad_r < 0) pad_r = 0;
+		if (pad_r > SCR_H - PAD_H) pad_r = SCR_H - PAD_H;
 
     // ---- ball physics ----
     bx += dx;

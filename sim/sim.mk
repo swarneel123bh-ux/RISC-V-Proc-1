@@ -6,6 +6,7 @@
 # vvp runs with CWD = sim/, so program.hex is one level up: ../software/...
 # Recipe lines use TABS.
 # ============================================================================
+PLUSARGS ?=
 IVERILOG     := iverilog
 IVERILOG_VPI := iverilog-vpi
 VVP          := vvp
@@ -75,7 +76,7 @@ $(OUT): $(SOURCES) $(TBENCH) $(ROM)
 	$(IVERILOG) $(FLAGS) $(INCLUDE_PATHS) -DUMEM_HEXFILE='"$(HEXPATH)"' -o $@ $(SOURCES) $(TBENCH)
 
 console: all
-	$(VVP) $(VPI_RUN) $(OUT)
+	$(VVP) $(VPI_RUN) $(OUT) $(PLUSARGS)
 
 clean:
 	rm -rf $(BUILD)
@@ -88,14 +89,12 @@ $(SDL_BIN): $(SDL_SRC)
 	@mkdir -p $(BUILD)
 	cc -O2 -o $@ $< $$(sdl2-config --cflags --libs)
 
-# Graphics window + UART keyboard in the terminal.
 screen: all $(SDL_BIN)
 	@rm -f /tmp/rv32_fb
 	@$(SDL_BIN) & SDLPID=$$!; \
 	 trap "kill $$SDLPID 2>/dev/null" EXIT INT TERM; \
-	 $(VVP) $(VPI_RUN) $(OUT)
+	 $(VVP) $(VPI_RUN) $(OUT) $(PLUSARGS)
 
-# Graphics window + keyboard captured BY the window (for playing).
 screen_only: all $(SDL_BIN)
 	@rm -f /tmp/rv32_fb
-	@trap 'kill 0' INT TERM; $(SDL_BIN) | $(VVP) $(VPI_RUN) $(OUT)
+	@trap 'kill 0' INT TERM; $(SDL_BIN) | $(VVP) $(VPI_RUN) $(OUT) $(PLUSARGS)

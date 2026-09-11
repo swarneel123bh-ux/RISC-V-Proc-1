@@ -3,3 +3,5 @@ build/
 HANDOFF*.md
 *.py
 .*
+gowin_src/
+collect_rtl.sh

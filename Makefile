@@ -19,6 +19,7 @@
 # Recipe lines use TABS; everything else is 2-space.
 # ============================================================================
 # Discover modules by the presence of rtl/<m>/<m>.mk (notdir of its parent).
+PLUSARGS ?=
 RTL_MODULES := $(notdir $(patsubst %/,%,$(dir $(wildcard rtl/*/*.mk))))
 .PHONY: all list test clean sim sim-clean proc-console proc-screen proc-screen_only
 all: list
@@ -43,9 +44,9 @@ define RTL_RULES
 rtl-$(1):
 	@$$(MAKE) --no-print-directory -C rtl/$(1) -f $(1).mk all
 rtl-$(1)-test:
-	@$$(MAKE) --no-print-directory -C rtl/$(1) -f $(1).mk test
+	@$$(MAKE) --no-print-directory -C rtl/$(1) -f $(1).mk test PLUSARGS="$$(PLUSARGS)"
 rtl-$(1)-run:
-	@$$(MAKE) --no-print-directory -C rtl/$(1) -f $(1).mk run
+	@$$(MAKE) --no-print-directory -C rtl/$(1) -f $(1).mk run PLUSARGS="$$(PLUSARGS)"
 rtl-$(1)-clean:
 	@$$(MAKE) --no-print-directory -C rtl/$(1) -f $(1).mk clean
 endef
@@ -84,7 +85,7 @@ endif
 	fi
 	$(OBJCOPY) -O binary $(SW_DIR)/$(PROG).elf $(SW_DIR)/$(PROG).bin
 	python3 -c "d=open('$(SW_DIR)/$(PROG).bin','rb').read(); d+=b'\x00'*((-len(d))%4); open('$(ROM)','w').write('\n'.join(f'{int.from_bytes(d[i:i+4],\"little\"):08x}' for i in range(0,len(d),4))+'\n')"
-	@$(MAKE) --no-print-directory $(PROG_TARGET)
+	@$(MAKE) --no-print-directory $(PROG_TARGET) PLUSARGS="$(PLUSARGS)"
 # ---- interactive VPI console -----------------------------------------------
 .PHONY: uart-console
 uart-console:
@@ -101,30 +102,27 @@ sim-clean:
 # `test`. rtl-proc-console is the small delegating target it lands on.
 .PHONY: rtl-proc-console
 rtl-proc-console:
-	@$(MAKE) --no-print-directory -C sim -f sim.mk console
+	@$(MAKE) --no-print-directory -C sim -f sim.mk console PLUSARGS="$(PLUSARGS)"
 proc-console:
 ifndef PROG
-	$(error PROG not set. Usage: make proc-console PROG=<name>)
+	$(error PROG not set. Usage: make proc-console PROG=<name> PLUSARGS=\"+cycles=2000\")
 endif
 	@$(MAKE) --no-print-directory prog PROG=$(PROG) PROG_TARGET=rtl-proc-console
 .PHONY: rtl-proc-screen
 rtl-proc-screen:
-	@$(MAKE) --no-print-directory -C sim -f sim.mk screen
-
+	@$(MAKE) --no-print-directory -C sim -f sim.mk screen PLUSARGS="$(PLUSARGS)"
 proc-screen:
 ifndef PROG
-	$(error PROG not set. Usage: make proc-screen PROG=<name>)
+	$(error PROG not set. Usage: make proc-screen PROG=<name> PLUSARGS=\"+cycles=2000\")
 else
 	@$(MAKE) --no-print-directory prog PROG=$(PROG) PROG_TARGET=rtl-proc-screen
 endif
-
 .PHONY: rtl-proc-screen_only
 rtl-proc-screen_only:
-	@$(MAKE) --no-print-directory -C sim -f sim.mk screen_only
-
+	@$(MAKE) --no-print-directory -C sim -f sim.mk screen_only PLUSARGS="$(PLUSARGS)"
 proc-screen_only:
 ifndef PROG
-	$(error PROG not set. Usage: make proc-screen_only PROG=<name>)
+	$(error PROG not set. Usage: make proc-screen_only PROG=<name> PLUSARGS=\"+cycles=2000\")
 else
 	@$(MAKE) --no-print-directory prog PROG=$(PROG) PROG_TARGET=rtl-proc-screen_only
 endif

@@ -44,7 +44,10 @@ module proc_tb();
   reg  rstb;
   wire dut_ser_tx, host_ser_tx, quit;
 
+  reg clk;
+  always begin #5; clk = ~clk; end
   proc uut(
+  	.clk(clk),
     .rstb   (rstb),
     .ser_rx (host_ser_tx),
     .ser_tx (dut_ser_tx)
@@ -53,7 +56,7 @@ module proc_tb();
   // proc.v generates its own clock internally; borrow it so both UARTs sit in
   // the same domain. (On hardware the host is genuinely asynchronous -- that
   // case is covered by uart_rx's 2-FF synchroniser, not by this harness.)
-  wire clk = uut.clk;
+  // wire clk = uut.clk;
 
   uart_host #(
     .CLK_FREQ  (CLK_HZ),
@@ -107,11 +110,12 @@ module proc_tb();
   endtask
 
   initial begin
+
     if ($test$plusargs("dump")) begin
       $dumpfile("build/vcd/proc_tb.vcd");
       $dumpvars(0, proc_tb);
     end
-
+    clk = 0;
     ncycles  = 0;                         // 0 = run until ESC
     memaddr  = 0;
     memwords = 0;

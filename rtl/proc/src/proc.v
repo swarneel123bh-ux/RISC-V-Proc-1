@@ -1,14 +1,15 @@
 `timescale 1ns / 1ps
 
 module proc(
+	input wire  clk,		// main clk
 	input wire 	rstb,		// Active low reset
 	input wire 	ser_rx,	// uart_rx pin
 	output wire ser_tx  // uart_tx pin
 );
 
 	// Master clock
-	reg clk;
-  always begin #5; clk = ~clk; end
+	// reg clk;
+  // always begin #5; clk = ~clk; end
 
   // Branch predictor diagnostics wires
   reg [31:0] cyc_count;
@@ -136,6 +137,7 @@ module proc(
  	wire cu_branch;
  	wire cu_jump;
  	wire cu_jalr;
+  wire cu_uses_rs1, cu_uses_rs2;
   cu controlUnit(
   	.opcode(id_opcode),
   	.reg_write(cu_reg_write),
@@ -147,7 +149,9 @@ module proc(
   	.wb_sel(cu_wb_sel),
   	.branch(cu_branch),
   	.jump(cu_jump),
-  	.jalr(cu_jalr)
+  	.jalr(cu_jalr),
+   	.uses_rs1(cu_uses_rs1),
+   	.uses_rs2(cu_uses_rs2)
   );
 
   // ID/EX PIPELINE REGISTER
@@ -168,6 +172,8 @@ module proc(
  	reg [1:0] idex_cu_wb_sel;
   reg idex_branchPredictor_predict_taken;
   reg [31:0] idex_branchPredictor_predict_target;
+  // reg idex_uses_rs1;
+  // reg idex_uses_rs2;
 
   // EX Stage stuff
   wire [3:0] aluctrl_out;
@@ -345,10 +351,13 @@ module proc(
   	endcase
   end
 
+
   // HAZARD DETECTION UNIT
   hazard_detection_unit hazardDetectionUnit(
 	 	.id_rs1(id_rs1),        // sources of the instruction in ID
   	.id_rs2(id_rs2),
+   	.uses_rs1(cu_uses_rs1),
+   	.uses_rs2(cu_uses_rs2),
    	.idex_rd(idex_rd),       // dest of the instruction in EX
    	.idex_mem_read(idex_cu_mem_read), // is that EX instruction a load?
    	.stall(hdu_stall)
@@ -358,7 +367,7 @@ module proc(
   // reset
   always @(posedge clk or negedge rstb) begin
   	if (!rstb) begin
-   		clk <= 0;
+   		// clk <= 0;
 
 	    cyc_count        <= 0;
 	    branch_count     <= 0;
@@ -455,6 +464,8 @@ module proc(
       	idex_cu_jalr 			<= 0;
        	idex_branchPredictor_predict_taken <= 0;
        	idex_branchPredictor_predict_target <= 0;
+        // idex_uses_rs1 <= 0;
+        // idex_uses_rs2 <= 0;
     	end else if (hdu_stall) begin
      		// FREEZE IFID, BUBBLE IDEX
      		ifid_pc 			<= ifid_pc;
@@ -485,6 +496,8 @@ module proc(
       	idex_cu_jalr 			<= 0;
       	idex_branchPredictor_predict_taken <= 0;
       	idex_branchPredictor_predict_target <= 0;
+       	// idex_uses_rs1 <= 0;
+       	// idex_uses_rs2 <= 0;
      	end else begin
     		ifid_pc <= pcout;
      		ifid_pcPlus4 <= pcadd4out;
@@ -514,6 +527,8 @@ module proc(
       	idex_cu_jalr <= cu_jalr;
        	idex_branchPredictor_predict_taken <= ifid_branchPredictor_predict_taken;
         idex_branchPredictor_predict_target <= ifid_branchPredictor_predict_target;
+        // idex_uses_rs1 <= cu_uses_rs1;
+        // idex_uses_rs2 <= cu_uses_rs2;
      	end
 
       exmem_pcPlus4 <= idex_pcPlus4;

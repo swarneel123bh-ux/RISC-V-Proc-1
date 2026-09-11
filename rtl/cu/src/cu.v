@@ -11,7 +11,9 @@ module cu (
   output reg [1:0] wb_sel,       // 00=alu, 01=mem, 10=pc+4    <- JAL/JALR
   output reg       branch,       // conditional
   output reg       jump,         // JAL
-  output reg       jalr          // JALR (target from ALU, not adder)
+  output reg       jalr,         // JALR (target from ALU, not adder)
+  output reg 			 uses_rs1,
+  output reg			 uses_rs2
 );
 
 	// OPCODES
@@ -53,6 +55,8 @@ module cu (
   	alu_src_b = B_RS2;
   	alu_op = ALU_ADD;
   	wb_sel = WB_ALU;
+   	uses_rs1 = 0;
+   	uses_rs2 = 0;
 
    	case (opcode)
     	OP_LUI: begin
@@ -90,6 +94,8 @@ module cu (
         alu_op = ALU_ADD;
         wb_sel = WB_PC4;
         jalr = 1;
+        uses_rs1 = 1;
+        uses_rs2 = 0;
       end
 
       OP_BRANCH: begin
@@ -97,6 +103,8 @@ module cu (
        	alu_src_b = B_RS2;
         alu_op = ALU_BR;
         branch = 1;
+        uses_rs1 = 1;
+        uses_rs2 = 1;
       end
 
       OP_LOAD: begin
@@ -106,6 +114,8 @@ module cu (
         alu_op = ALU_ADD;
         wb_sel = WB_MEM;
         mem_read = 1;
+        uses_rs1 = 1;
+        uses_rs2 = 0;
       end
 
       OP_STORE: begin
@@ -113,6 +123,8 @@ module cu (
        	alu_src_b = B_IMM;
         alu_op = ALU_ADD;
         mem_write = 1;
+        uses_rs1 = 1;
+        uses_rs2 = 1;
       end
 
       OP_OPIMM: begin
@@ -121,6 +133,8 @@ module cu (
         alu_src_b = B_IMM;
         alu_op = ALU_I;
         wb_sel = WB_ALU;
+        uses_rs1 = 1;
+        uses_rs2 = 0;
       end
 
       OP_OP: begin
@@ -129,13 +143,14 @@ module cu (
         alu_src_b = B_RS2;
         alu_op = ALU_R;
         wb_sel = WB_ALU;
+        uses_rs1 = 1;
+        uses_rs2 = 1;
       end
 
       OP_FENCE:  ;   // NOP
       OP_SYSTEM: ;   // ECALL/EBREAK -> NOP for now
       default:   ;   // defaults above: writes off
     endcase
-
   end
 
 

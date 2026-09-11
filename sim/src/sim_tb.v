@@ -25,14 +25,17 @@ module sim_tb();
 
   reg  rstb;
   wire dut_ser_tx, host_ser_tx;
+  reg clk;
+  always begin #5; clk = ~clk; end
 
   proc uut(
+  	.clk(clk),
     .rstb   (rstb),
     .ser_rx (host_ser_tx),
     .ser_tx (dut_ser_tx)
   );
 
-  wire clk = uut.clk;
+  // wire clk = uut.clk;
 
   uart_host #(
     .CLK_FREQ  (CLK_HZ),
@@ -52,13 +55,14 @@ module sim_tb();
       $dumpvars(0, sim_tb);
     end
     rstb = 0;
+    clk = 0;
     #30;
     rstb = 1;
     // No #delay and no $finish: proc.v's own `always #5 clk` keeps time moving.
   end
 
   // Done-detector: the CPU storing EOT (0x04) to UART TX.
-  always @(posedge uut.clk) begin
+  always @(posedge clk) begin
     if (uut.dataMem.is_uart && (|uut.memwrap_wstrb) && uut.exmem_alu_out == 32'hFFFF0000
         && uut.memwrap_store_out[7:0] == 8'h04) begin
       $display("");

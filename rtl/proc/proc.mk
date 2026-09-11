@@ -4,6 +4,10 @@
 # Run directly with:              make -C rtl/proc -f proc.mk test
 # Recipe lines use TABS (make requirement); everything else is 2-space.
 # ============================================================================
+# # Extra plusargs forwarded verbatim to vvp. Quote them, or make will read the
+# second one as a goal:
+# make -C rtl/proc -f proc.mk run PLUSARGS="+cycles=2000 +noregs"
+PLUSARGS ?=
 
 IVERILOG := iverilog
 VVP      := vvp
@@ -70,14 +74,14 @@ $(OUT): $(SOURCES) $(DEPS) $(TBENCH)
 
 test: all
 	@mkdir -p $(VCD_DIR)
-	printf 'X' | $(VVP) $(VPI_RUN) $(OUT) +dump
+	printf 'X' | $(VVP) $(VPI_RUN) $(OUT) +dump $(PLUSARGS)
 	$(SURFER) $(WAVE) >/dev/null 2>&1
 
 run: all
-	$(VVP) $(VPI_RUN) $(OUT)
+	$(VVP) $(VPI_RUN) $(OUT) $(PLUSARGS)
 
 console: all
-	$(VVP) $(VPI_RUN) $(OUT)
+	$(VVP) $(VPI_RUN) $(OUT) $(PLUSARGS)
 
 clean:
 	rm -rf $(BUILD)

@@ -1,10 +1,15 @@
 `timescale 1ns / 1ps
 
-// Testbench for unified_memory.v  — SYNC-READ revision.
+// Testbench for unified_memory.v  — SPLIT-ARRAY revision.
 //
-// Rewritten after the WRITE_MODE0 / PA2122 fix. The previous version was
-// written against async reads (set addr, #1, sample) and would pass against
-// sync-read RTL by sampling stale data (see HANDOFF s9).
+// Revised after the mirror split. unified_memory now holds TWO physical
+// arrays: `memory` (data, 8192 words, one port, inferred SP) and `memory_i`
+// (instruction mirror, IMEM_WORDS words, one reader + one writer, inferred
+// SDPB). Every data write below IMEM_WORDS lands in both in the same cycle.
+//
+// Section 9 is the only genuinely new coverage and is the reason this file
+// changed. Everything above it is carried over unmodified except where the
+// alias arithmetic had to split in two.
 //
 // Sampling contract, used by every task here:
 //   address driven on negedge N  ->  captured at posedge N  ->  data valid
@@ -14,10 +19,13 @@
 
 module unified_memory_tb;
 
-  // Decision 10: 32 KB main memory.
+  // Decision 10: 32 KB main memory. Mirror is 8 KB — code must fit below it.
   localparam DEPTH_WORDS = 8192;
-  localparam AW          = 13;            // $clog2(DEPTH_WORDS)
-  localparam ALIAS_BIT   = 32'h1 << (AW + 2);   // first ignored address bit
+  localparam IMEM_WORDS  = 2048;
+  localparam AW          = 13;                    // $clog2(DEPTH_WORDS)
+  localparam IAW         = 11;                    // $clog2(IMEM_WORDS)
+  localparam ALIAS_BIT   = 32'h1 << (AW  + 2);    // first ignored dmem bit
+  localparam IALIAS_BIT  = 32'h1 << (IAW + 2);    // first ignored imem bit
 
   reg         clk;
   reg         imem_en;
@@ -37,6 +45,7 @@ module unified_memory_tb;
 
   unified_memory #(
     .DEPTH_WORDS(DEPTH_WORDS),
+    .IMEM_WORDS(IMEM_WORDS),
     .HEXFILE("../../software/rom/umem_test.hex")
   ) dut (
     .clk(clk),
@@ -139,6 +148,8 @@ module unified_memory_tb;
     // ================================================================
     // 1. Preload + fetch, port A
     //    umem_test.hex: word0=DEADBEEF word1=11223344 word2=A5A5A5A5
+    //    Both arrays are loaded from the same file, so a fetch and a data
+    //    read of the same word must agree at reset.
     // ================================================================
     $display("--- preload / fetch ---");
     fetch(32'h0000_0000, ival);
@@ -175,8 +186,9 @@ module unified_memory_tb;
     check32("release fetches word0", imem_rdata, 32'hDEADBEEF);
 
     // ================================================================
-    // 3. WRITE_MODE0 == 2'b00 : a write cycle must not read.
-    //    Direct regression guard for PA2122.
+    // 3. Data port write cycle must not read.
+    //    The `else` that makes this true is what keeps the inferred write
+    //    mode at no-change. Direct regression guard for PA2122.
     // ================================================================
     $display("--- write cycle is no-change on rdata ---");
     dread(32'h0000_0004, held);          // rdata now holds 0x11223344
@@ -200,14 +212,12 @@ module unified_memory_tb;
     dread(32'h0000_0000, rdval);
     check32("...but the write still landed", rdval, 32'h5A5A5A5A);
 
-    // restore word0 for later checks
+    // restore word0 in BOTH arrays for later checks
     dwrite(32'h0000_0000, 32'hDEADBEEF, 4'b1111);
 
     // ================================================================
-    // 4. Read gating.
-    //    *** FLIP THIS CHECK if you took the bare `else if` form: with no
-    //        else arm, an idle cycle HOLDS rather than zeroing, and the
-    //        expected value becomes 0x11223344 (whatever was last read). ***
+    // 4. Read gating. The RTL took the explicit `else dmem_rdata <= 0`
+    //    form, so an idle cycle drives zero rather than holding.
     // ================================================================
     $display("--- read gating ---");
     dread(32'h0000_0100, rdval);
@@ -248,16 +258,23 @@ module unified_memory_tb;
     check32("zero strobe does not write", rdval, 32'hBEEFABCD);
 
     // ================================================================
-    // 6. Aliasing: address bits above AW+1 are ignored
+    // 6. Aliasing. The two arrays now have DIFFERENT alias boundaries:
+    //    the data array ignores bits above AW+1, the mirror above IAW+1.
+    //    This asymmetry is the new hazard the split introduced.
     // ================================================================
     $display("--- aliasing ---");
     dwrite(32'h0000_0000, 32'h12345678, 4'b1111);
     dread (ALIAS_BIT, rdval);
-    check32("alias wraps to word0", rdval, 32'h12345678);
+    check32("dmem alias wraps to word0", rdval, 32'h12345678);
+    fetch (IALIAS_BIT, ival);
+    check32("imem alias wraps to word0", ival, 32'h12345678);
+    dwrite(32'h0000_0000, 32'hDEADBEEF, 4'b1111);
 
     // ================================================================
     // 7. Cross-port, different words: the dual-port property.
-    //    This is what the WRITE_MODE fix must NOT have cost.
+    //    Two separate arrays now, so this cannot fail for a port-conflict
+    //    reason — but it still catches a mirror block that accidentally
+    //    made its read and write exclusive (an `else` where there is none).
     // ================================================================
     $display("--- dual port, different words ---");
     dwrite(32'h0000_0400, 32'h00000000, 4'b1111);
@@ -296,6 +313,40 @@ module unified_memory_tb;
     dmem_wstrb = 4'b0000;
     fetch(32'h0000_0500, ival);
     check32("same word reads new value next cycle", ival, 32'h22222222);
+
+    // ================================================================
+    // 9. MIRROR COHERENCE. New with the split; the whole reason a loader
+    //    and self-modifying code still work.
+    //
+    //    9a. A write below IMEM_WORDS must become visible to a fetch.
+    //        Deleting the mirror write block fails ONLY this.
+    //    9b. A write at or above IMEM_WORDS must NOT reach the mirror.
+    //        0x2700 and 0x0700 are the same mirror index (2496 & 2047 ==
+    //        448), so a missing mirror_hit guard corrupts 0x0700 here and
+    //        nowhere else. This is the discriminating half of the pair.
+    //    9c. Byte lanes reach the mirror too, not just whole words.
+    // ================================================================
+    $display("--- mirror coherence ---");
+
+    // 9a
+    dwrite(32'h0000_0700, 32'hC0DE0001, 4'b1111);
+    fetch (32'h0000_0700, ival);
+    check32("9a store below limit is fetchable", ival, 32'hC0DE0001);
+
+    // 9b — same mirror index, above the limit
+    dwrite(32'h0000_2700, 32'hBADBAD02, 4'b1111);
+    fetch (32'h0000_0700, ival);
+    check32("9b store above limit leaves mirror alone", ival, 32'hC0DE0001);
+    dread (32'h0000_2700, rdval);
+    check32("9b ...but it did reach the data array", rdval, 32'hBADBAD02);
+
+    // 9c
+    dwrite(32'h0000_0700, 32'h000000AA, 4'b0001);
+    fetch (32'h0000_0700, ival);
+    check32("9c SB reaches the mirror", ival, 32'hC0DE00AA);
+    dwrite(32'h0000_0700, 32'hBB000000, 4'b1000);
+    fetch (32'h0000_0700, ival);
+    check32("9c SB lane3 reaches the mirror", ival, 32'hBBDE00AA);
 
     // ================================================================
     $display("");

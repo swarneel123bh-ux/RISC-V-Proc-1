@@ -4,7 +4,8 @@ module proc(
 	input wire  clk,		// main clk
 	input wire 	rstb,		// Active low reset
 	input wire 	ser_rx,	// uart_rx pin
-	output wire ser_tx  // uart_tx pin
+	output wire ser_tx,  // uart_tx pin
+	input imem_wen_
 );
 
 	// Master clock
@@ -70,14 +71,17 @@ module proc(
   wire [31:0] instructionmeminstr;
   wire [31:0] imem_um_addr, imem_um_rdata;
   wire imem_umem_en;
+  wire umem_imem_wen;
   instruction_mem instructionmem(
   	.clk(clk),
    	.addr(pcout),
     .instr(instructionmeminstr),
     .imem_en(~hold),
+    .imem_wen(~imem_wen_),
     .umem_addr(imem_um_addr),
     .umem_rdata(imem_um_rdata),
-    .umem_imem_en(imem_umem_en)
+    .umem_imem_en(imem_umem_en),
+    .umem_imem_wen(umem_imem_wen)
   );
 
   // IF/ID pipeline register
@@ -326,6 +330,7 @@ module proc(
    	.imem_addr(imem_um_addr),
    	.imem_rdata(imem_um_rdata),
     .imem_en(imem_umem_en),
+    //.imem_we(umem_imem_wen),
 
     // Data side ports, async read + sync byte-strobed write
     .dmem_addr(dmem_um_addr),

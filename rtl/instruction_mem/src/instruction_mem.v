@@ -14,31 +14,21 @@ module instruction_mem //#(
 	input  wire        clk,
   input  wire [31:0] addr,
   input   wire      imem_en,
+  input wire imem_wen,
   output wire [31:0] instr,
 
   // Unified Memory side ports
   output wire [31:0] umem_addr,
   output wire        umem_imem_en,
+  output wire umem_imem_wen,
   input wire 	[31:0] umem_rdata
 );
 
   assign umem_imem_en = imem_en;
+  assign umem_imem_wen = imem_wen;
 
 	// Simple pass through, later will cache (meaning imem will also have its own memory)
 	assign umem_addr = addr;
 	assign instr = umem_rdata;
 
-  // localparam AW = $clog2(DEPTH);
-  // reg [31:0] mem [0:DEPTH-1];
-  // initial $readmemh(HEXFILE, mem);
-  // wire [AW-1:0] widx = addr[AW+1:2];    // word index, drop byte offset
-  // generate
-  //   if (SYNC) begin : g_sync
-  //     reg [31:0] rdata;
-  //     always @(posedge clk) rdata <= mem[widx];
-  //     assign instr = rdata;
-  //   end else begin : g_async
-  //     assign instr = mem[widx];
-  //   end
-  // endgenerate
 endmodule

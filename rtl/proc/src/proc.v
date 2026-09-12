@@ -1,11 +1,11 @@
+
 `timescale 1ns / 1ps
 
 module proc(
 	input wire  clk,		// main clk
 	input wire 	rstb,		// Active low reset
 	input wire 	ser_rx,	// uart_rx pin
-	output wire ser_tx,  // uart_tx pin
-	input imem_wen_
+	output wire ser_tx  // uart_tx pin
 );
 
 	// Master clock
@@ -77,7 +77,7 @@ module proc(
    	.addr(pcout),
     .instr(instructionmeminstr),
     .imem_en(~hold),
-    .imem_wen(~imem_wen_),
+//    .imem_wen(~imem_wen_),
     .umem_addr(imem_um_addr),
     .umem_rdata(imem_um_rdata),
     .umem_imem_en(imem_umem_en),

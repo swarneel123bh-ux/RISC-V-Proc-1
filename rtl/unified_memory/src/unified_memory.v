@@ -44,19 +44,21 @@ module unified_memory #(
 	wire [ADDRWIDTHS-1:0] imem_wordidx  = imem_addr[ADDRWIDTHS+1 : 2];
 	wire [ADDRWIDTHS-1:0] dmem_wordidx  = dmem_addr[ADDRWIDTHS+1 : 2];
 
-	// Assign the full word,
-// 	assign imem_rdata = memory[imem_wordidx];
-
-	// Handle data_mem.v-writes work here
+	// Handle dual port reads here
 	always @(posedge clk) begin
-	      if (imem_en) imem_rdata <= memory[imem_wordidx];
-        //imem_rdata <= (imem_en) ? memory[imem_wordidx] : 32'h0;
-        dmem_rdata <= dmem_read ? memory[dmem_wordidx] : 32'h0;
+  	if (imem_en) imem_rdata <= memory[imem_wordidx];
+	end
 
-		if (dmem_wstrb[0]) memory[dmem_wordidx][7:0] 		<= dmem_wdata[7:0];
-		if (dmem_wstrb[1]) memory[dmem_wordidx][15:8] 	<= dmem_wdata[15:8] ;
-		if (dmem_wstrb[2]) memory[dmem_wordidx][23:16] 	<= dmem_wdata[23:16];
-		if (dmem_wstrb[3]) memory[dmem_wordidx][31:24] 	<= dmem_wdata[31:24];
+
+	// Handle writes here
+	always @(posedge clk) begin
+		if (|dmem_wstrb) begin
+			if (dmem_wstrb[0]) memory[dmem_wordidx][7:0] 		<= dmem_wdata[7:0];
+			if (dmem_wstrb[1]) memory[dmem_wordidx][15:8] 	<= dmem_wdata[15:8] ;
+			if (dmem_wstrb[2]) memory[dmem_wordidx][23:16] 	<= dmem_wdata[23:16];
+			if (dmem_wstrb[3]) memory[dmem_wordidx][31:24] 	<= dmem_wdata[31:24];
+		end else if (dmem_read) dmem_rdata <= memory[dmem_wordidx];
+		else dmem_rdata <= 0;
 	end
 
 	// Assign data_mem reads

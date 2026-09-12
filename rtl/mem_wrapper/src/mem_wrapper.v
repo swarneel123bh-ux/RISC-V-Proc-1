@@ -14,7 +14,8 @@ module mem_wrapper (
 	reg [15:0] temphalf;
 
 	always @(*) begin
-
+		tempbyte = 0;
+		temphalf = 0;
 		if (!mem_write) begin	// LOAD OPERATIONS
 			store_out = 32'h0;
 			wstrb = 4'b0000;

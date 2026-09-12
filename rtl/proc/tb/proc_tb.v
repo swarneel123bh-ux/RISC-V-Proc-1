@@ -133,4 +133,18 @@ module proc_tb();
     end
   end
 
+  // Harness, Claude-suggested — not mine. Decision 17: only the low
+  // IMEM_WORDS*4 bytes are fetchable; above it the fetch aliases back
+  // into the mirror and the program appears to restart.
+  localparam IMEM_WORDS = 2048;
+  reg ceiling_hit = 1'b0;
+
+  always @(posedge clk) begin
+    if (rstb === 1'b1 && !ceiling_hit &&
+        uut.pcout >= (IMEM_WORDS * 4)) begin
+      ceiling_hit <= 1'b1;
+      $display("FATAL: PC %h above fetch ceiling %h",
+               uut.pcout, IMEM_WORDS * 4);
+    end
+  end
 endmodule

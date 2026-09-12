@@ -53,6 +53,7 @@ module unified_memory #(
 	// Handle writes here
 	always @(posedge clk) begin
 		if (|dmem_wstrb) begin
+			dmem_rdata <= dmem_wdata;
 			if (dmem_wstrb[0]) memory[dmem_wordidx][7:0] 		<= dmem_wdata[7:0];
 			if (dmem_wstrb[1]) memory[dmem_wordidx][15:8] 	<= dmem_wdata[15:8] ;
 			if (dmem_wstrb[2]) memory[dmem_wordidx][23:16] 	<= dmem_wdata[23:16];

@@ -71,7 +71,7 @@ module proc(
   wire [31:0] instructionmeminstr;
   wire [31:0] imem_um_addr, imem_um_rdata;
   wire imem_umem_en;
-  wire umem_imem_wen;
+  // wire umem_imem_wen;
   instruction_mem instructionmem(
   	.clk(clk),
    	.addr(pcout),
@@ -80,8 +80,8 @@ module proc(
 //    .imem_wen(~imem_wen_),
     .umem_addr(imem_um_addr),
     .umem_rdata(imem_um_rdata),
-    .umem_imem_en(imem_umem_en),
-    .umem_imem_wen(umem_imem_wen)
+    .umem_imem_en(imem_umem_en)
+    //.umem_imem_wen(umem_imem_wen)
   );
 
   // IF/ID pipeline register

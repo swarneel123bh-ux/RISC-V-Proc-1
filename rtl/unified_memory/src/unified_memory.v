@@ -58,7 +58,15 @@ module unified_memory #(
       if (dmem_wstrb[2]) memory_i[dmem_wordidx[IAW-1:0]][23:16] <= dmem_wdata[23:16];
       if (dmem_wstrb[3]) memory_i[dmem_wordidx[IAW-1:0]][31:24] <= dmem_wdata[31:24];
     end
-    if (imem_en) imem_rdata <= memory_i[imem_wordidx];
+
+    if (imem_en) begin
+    	if ((imem_wordidx == dmem_wordidx[IAW-1:0]) && mirror_hit) begin
+	      if (dmem_wstrb[0]) imem_rdata[7:0] 		<= dmem_wdata[7:0]; 	else imem_rdata[7:0] 		<= memory_i[imem_wordidx][7:0];
+	      if (dmem_wstrb[1]) imem_rdata[15:8] 	<= dmem_wdata[15:8]; 	else imem_rdata[15:8] 	<= memory_i[imem_wordidx][15:8];
+	      if (dmem_wstrb[2]) imem_rdata[23:16] 	<= dmem_wdata[23:16]; else imem_rdata[23:16] 	<= memory_i[imem_wordidx][23:16];
+	      if (dmem_wstrb[3]) imem_rdata[31:24] 	<= dmem_wdata[31:24]; else imem_rdata[31:24] 	<= memory_i[imem_wordidx][31:24];
+     	end else imem_rdata <= memory_i[imem_wordidx];
+    end
   end
 
   // Data port. Read and write are EXCLUSIVE — the else is what makes the

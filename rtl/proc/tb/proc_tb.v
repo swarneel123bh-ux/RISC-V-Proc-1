@@ -47,16 +47,11 @@ module proc_tb();
   reg clk;
   always begin #5; clk = ~clk; end
   proc uut(
-  	.clk(clk),
+  	.clk 		(clk),
     .rstb   (rstb),
     .ser_rx (host_ser_tx),
     .ser_tx (dut_ser_tx)
   );
-
-  // proc.v generates its own clock internally; borrow it so both UARTs sit in
-  // the same domain. (On hardware the host is genuinely asynchronous -- that
-  // case is covered by uart_rx's 2-FF synchroniser, not by this harness.)
-  // wire clk = uut.clk;
 
   uart_host #(
     .CLK_FREQ  (CLK_HZ),
@@ -77,6 +72,32 @@ module proc_tb();
   // --------------------------------------------------------------------------
   integer j, memaddr, memwords, widx, ncycles;
   localparam integer NS_PER_CYCLE = 10;   // proc.v drives clk with #5 half-periods
+
+  // ---- HARNESS: halt-on-sentinel watch. Claude-authored, not mine. ----
+  // Armed only with +halt_watch, so pong.c and interactive runs are unaffected.
+  reg halt_watch = 0;
+  integer cycles = 0;
+  initial halt_watch = $test$plusargs("halt_watch");
+  always @(posedge clk) begin
+  	cycles <= cycles + 1;
+    if (halt_watch &&
+        uut.dataMem.addr  == 32'hFFFDFFFC &&
+        uut.dataMem.wstrb == 4'b1111 &&
+        uut.dataMem.wdata == 32'hC0DEDEAD) begin
+
+      $display("");
+      $display("***PROGRAM EXITED ***");
+      $display("HALT cycle=%0d ***", cycles);
+      if (uut.branch_count == 0)
+        $display("cycles=%0d branches=0 mispredicts=%0d percentage_mispredicts=n/a",
+                 uut.cyc_count, uut.mispredict_count);
+      else
+        $display("cycles=%0d branches=%0d mispredicts=%0d percentage_mispredicts=%0d%%",
+                 uut.cyc_count, uut.branch_count, uut.mispredict_count,
+                 (uut.mispredict_count * 100 / uut.branch_count));
+      $finish;
+    end
+  end
 
   task finish_up;
     begin

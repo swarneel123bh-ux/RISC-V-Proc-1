@@ -52,6 +52,12 @@ void bubblesort(int* arr, int size) {
 	}
 }
 
+#define EXIT (*(volatile unsigned int*) 0xFFFDFFFC)
+void exit_() {
+	while (!(UART_STATUS & UART_ST_TX_BUF_EMPTY)) {}
+	EXIT = (unsigned int)0xC0DEDEAD;
+}
+
 int main() {
 	int arr[] = {1, 4, 2, 6, 8, 3, 5, 7, 9, 10};
 	int size = 10;
@@ -69,24 +75,7 @@ int main() {
 		putchar(' ');
 	}
 	putchar(0x04);
-	while (1);
+	// while (1);
+	exit_();
 	return 0;
 }
-
-/*int main() {
-  putchar('A');
-  print_int(42);
-  putchar('B');
-  while (1);
-  }*/
-
-// int main() {
-//   int arr[10];
-//   arr[0]=1; arr[1]=4; arr[2]=2; arr[3]=6; arr[4]=8;
-//   arr[5]=3; arr[6]=5; arr[7]=7; arr[8]=9; arr[9]=10;
-//   int size = 10;
-//   for (int i = 0; i < size; i++) { print_int(arr[i]); putchar(' '); }
-//   bubblesort(arr, size);
-//   for (int i = 0; i < size; i++) { print_int(arr[i]); putchar(' '); }
-//   while (1);
-// }

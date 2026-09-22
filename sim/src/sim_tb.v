@@ -49,6 +49,33 @@ module sim_tb();
     .quit   ()
   );
 
+  // ---- HARNESS: halt-on-sentinel watch. Claude-authored, not mine. ----
+  // Armed only with +halt_watch, so pong.c and interactive runs are unaffected.
+  reg halt_watch = 0;
+  integer cycles = 0;
+  initial halt_watch = $test$plusargs("halt_watch");
+  always @(posedge clk) begin
+  	cycles <= cycles + 1;
+    if (halt_watch &&
+        uut.dataMem.addr  == 32'hFFFDFFFC &&
+        uut.dataMem.wstrb == 4'b1111 &&
+        uut.dataMem.wdata == 32'hC0DEDEAD) begin
+
+      $display("");
+      $display("***PROGRAM EXITED ***");
+      $display("HALT cycle=%0d ***", cycles);
+      if (uut.branch_count == 0)
+        $display("cycles=%0d branches=0 mispredicts=%0d percentage_mispredicts=n/a",
+                 uut.cyc_count, uut.mispredict_count);
+      else
+        $display("cycles=%0d branches=%0d mispredicts=%0d percentage_mispredicts=%0d%%",
+                 uut.cyc_count, uut.branch_count, uut.mispredict_count,
+                 (uut.mispredict_count * 100 / uut.branch_count));
+      $finish;
+    end
+  end
+
+
   initial begin
     if ($test$plusargs("dump")) begin
       $dumpfile("build/vcd/sim_tb.vcd");

@@ -86,6 +86,8 @@ module div_iter_tb ();
     repeat (2) @(posedge clk); assert_job_and_check(100, 20);
     repeat (2) @(posedge clk); assert_job_and_check(10000, 3);
 
+
+    $display("TOTAL=%0d PASS=%0d FAIL=%0d VERDICT=%s", total, passed, failed, (total == passed) ? "PASS" : "FAIL");
     $finish;
   end
 endmodule

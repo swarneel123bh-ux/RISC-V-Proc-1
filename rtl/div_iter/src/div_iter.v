@@ -22,11 +22,11 @@ module div_iter #(
 	reg [1:0] state;
 
 	reg [WIDTH:0] 	A;									// Accumulator, Extra bit for sign/carry
-	reg [WIDTH-1:0] Q;									// Quotient
-	reg [WIDTH-1:0] M;									// Remainder
+	reg [WIDTH-1:0] Q;									// Dividend
+	reg [WIDTH-1:0] M;									// Divisor
 	reg [$clog2(WIDTH):0] iterations;
 
-	reg [WIDTH-1:0] A_lshifted;
+	reg [WIDTH:0] A_lshifted;
 	reg [WIDTH-1:0] Q_lshifted;
 	reg [WIDTH:0] 	A_minus_M;
 
@@ -55,10 +55,11 @@ module div_iter #(
 					ready <= 1'b1;
 					if (start) begin
 						ready <= 1'b0;
+						dbz <= 0;
 						if (divisor == 0) begin
-							dbz <= 0;
+							dbz <= 1;
 							Q <= {WIDTH{1'b1}};	// Overflow handling, set all bits of quotient to 1
-							remainder <= dividend;
+							A[WIDTH-1:0] <= dividend;
 							state <= STATE_DONE;
 						end else begin
 							iterations <= WIDTH;

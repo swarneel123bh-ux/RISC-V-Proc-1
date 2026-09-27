@@ -10,16 +10,22 @@ module alu_control_tb ();
   alu_control DUT (.aluOp(aluOp), .funct3(funct3), .funct7(funct7),
                    .alu_control_out(alu_control_out));
 
+  // Base RV32I opcodes
   localparam ALUOP_ADD=4'b0000, ALUOP_SUB=4'b0001, ALUOP_SLL=4'b0010,
              ALUOP_SLT=4'b0011, ALUOP_SLTU=4'b0100, ALUOP_XOR=4'b0101,
              ALUOP_SRL=4'b0110, ALUOP_SRA=4'b0111, ALUOP_OR=4'b1000,
              ALUOP_AND=4'b1001;
 
-  // funct7 values that actually occur in RV32I
-  localparam F7_ZERO = 7'b0000000;   // bit5=0
-  localparam F7_ALT  = 7'b0100000;   // bit5=1  (SUB / SRA / SRAI)
-  localparam F7_M1   = 7'b1111111;   // imm=-1    -> bit5=1
-  localparam F7_2047 = 7'b0111111;   // imm=2047  -> bit5=1
+  // M extension opcodes (new)
+  localparam ALUOP_MUL=4'b1010, ALUOP_MULH=4'b1011, ALUOP_MULHU=4'b1100,
+             ALUOP_MULHSU=4'b1101, ALUOP_DIV=4'b1110, ALUOP_DIVU=4'b1111;
+
+  // funct7 values
+  localparam F7_ZERO = 7'b0000000;   // RV32I base
+  localparam F7_ALT  = 7'b0100000;   // SUB/SRA
+  localparam F7_M    = 7'b0000001;   // M extension
+  localparam F7_M1   = 7'b1111111;   // imm=-1
+  localparam F7_2047 = 7'b0111111;   // imm=2047
 
   task chk(input [1:0] ao, input [2:0] f3, input [6:0] f7,
            input [3:0] exp, input [80*8:1] name);
@@ -27,10 +33,10 @@ module alu_control_tb ();
     aluOp = ao; funct3 = f3; funct7 = f7; #1;
     if (alu_control_out !== exp) begin
       errors = errors + 1;
-      $display("FAIL %-24s aluOp=%b f3=%b f7=%b -> %b  exp %b",
+      $display("FAIL %-28s aluOp=%b f3=%b f7=%b -> %b  exp %b",
                name, ao, f3, f7, alu_control_out, exp);
     end else
-      $display("PASS %-24s aluOp=%b f3=%b f7=%b -> %b", name, ao, f3, f7, alu_control_out);
+      $display("PASS %-28s aluOp=%b f3=%b f7=%b -> %b", name, ao, f3, f7, alu_control_out);
   end endtask
 
   initial begin
@@ -39,16 +45,16 @@ module alu_control_tb ();
       $dumpvars(0, alu_control_tb);
     end
 
-    $display("--- aluOp=00 : force ADD, funct3/funct7 must be ignored ---");
+    $display("=== aluOp=00 : force ADD, funct3/funct7 must be ignored ===");
     chk(2'b00, 3'b000, F7_ZERO, ALUOP_ADD, "LUI/AUIPC/LOAD");
     chk(2'b00, 3'b101, F7_ALT,  ALUOP_ADD, "STORE (f3/f7 ignored)");
     chk(2'b00, 3'b111, F7_M1,   ALUOP_ADD, "JALR (f3/f7 ignored)");
 
-    $display("--- aluOp=01 : force SUB ---");
+    $display("=== aluOp=01 : force SUB ===");
     chk(2'b01, 3'b000, F7_ZERO, ALUOP_SUB, "BEQ");
     chk(2'b01, 3'b101, F7_ALT,  ALUOP_SUB, "BGE (f3/f7 ignored)");
 
-    $display("--- aluOp=10 : R-type ---");
+    $display("=== aluOp=10 : R-type (RV32I base) ===");
     chk(2'b10, 3'b000, F7_ZERO, ALUOP_ADD,  "ADD");
     chk(2'b10, 3'b000, F7_ALT,  ALUOP_SUB,  "SUB");
     chk(2'b10, 3'b001, F7_ZERO, ALUOP_SLL,  "SLL");
@@ -60,7 +66,17 @@ module alu_control_tb ();
     chk(2'b10, 3'b110, F7_ZERO, ALUOP_OR,   "OR");
     chk(2'b10, 3'b111, F7_ZERO, ALUOP_AND,  "AND");
 
-    $display("--- aluOp=11 : OP-IMM, bit30 used ONLY for funct3=101 ---");
+    $display("=== aluOp=10 : R-type (M extension, funct7=0x01) ===");
+    chk(2'b10, 3'b000, F7_M, ALUOP_MUL,    "MUL");
+    chk(2'b10, 3'b001, F7_M, ALUOP_MULH,   "MULH");
+    chk(2'b10, 3'b010, F7_M, ALUOP_MULHSU, "MULHSU");
+    chk(2'b10, 3'b011, F7_M, ALUOP_MULHU,  "MULHU");
+    chk(2'b10, 3'b100, F7_M, ALUOP_DIV,    "DIV");
+    chk(2'b10, 3'b101, F7_M, ALUOP_DIVU,   "DIVU");
+    chk(2'b10, 3'b110, F7_M, ALUOP_DIV,    "REM");
+    chk(2'b10, 3'b111, F7_M, ALUOP_DIVU,   "REMU");
+
+    $display("=== aluOp=11 : OP-IMM (bit30 used ONLY for funct3=101) ===");
     chk(2'b11, 3'b000, F7_ZERO, ALUOP_ADD,  "ADDI +5");
     chk(2'b11, 3'b000, F7_M1,   ALUOP_ADD,  "ADDI -1   (bit30=1!)");
     chk(2'b11, 3'b000, F7_2047, ALUOP_ADD,  "ADDI 2047 (bit30=1!)");
@@ -74,17 +90,19 @@ module alu_control_tb ();
     chk(2'b11, 3'b110, F7_M1,   ALUOP_OR,   "ORI -1   (bit30=1!)");
     chk(2'b11, 3'b111, F7_M1,   ALUOP_AND,  "ANDI -1  (bit30=1!)");
 
-    $display("--- latch check: prime, then feed an X input ---");
+    $display("=== Latch check: prime, then feed X input ===");
     chk(2'b10, 3'b111, F7_ZERO, ALUOP_AND, "prime with AND");
     aluOp = 2'bxx; funct3 = 3'b000; funct7 = F7_ZERO; #1;
     if (alu_control_out === ALUOP_AND) begin
       errors = errors + 1;
-      $display("FAIL %-24s retained AND -> latch (add a default)", "X aluOp");
+      $display("FAIL %-28s retained AND -> latch (add default)", "X aluOp");
     end else
-      $display("PASS %-24s -> %b (no stale hold)", "X aluOp", alu_control_out);
+      $display("PASS %-28s -> %b (no stale hold)", "X aluOp", alu_control_out);
 
-    if (errors == 0) $display("\nRESULT: PASS");
-    else             $display("\nRESULT: FAIL (%0d errors)", errors);
+    $display("\n========================================");
+    if (errors == 0) $display("RESULT: ALL PASS");
+    else             $display("RESULT: FAIL (%0d errors)", errors);
+    $display("========================================\n");
     $finish;
   end
 endmodule
